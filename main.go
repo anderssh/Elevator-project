@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"./src/network"
 	"./src/driver"
+	"./src/log"
 	"time"
 	"net"
 );
@@ -29,6 +30,10 @@ func send(s chan network.Message) {
 func main() {
 
 	fmt.Println("START:..");
+
+	log.SetLogLevel(log.LOG_LEVEL_DEBUG);
+	log.Debug(123);
+	log.Error("Mayday, mayday!");
 
 	receiveChannel := make(chan network.Message);
 	sendChannel := make(chan network.Message);
