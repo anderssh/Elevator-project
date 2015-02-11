@@ -2,11 +2,9 @@ package driver;
 
 /*
 #cgo LDFLAGS: -lcomedi -lm
-#include "channels.h"
 #include "io.h"
 */
 import "C";
-import "fmt";
 
 //-----------------------------------------------//
 
