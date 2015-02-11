@@ -1,6 +1,8 @@
 package JSON;
 
-import "encoding/json"
+import(
+	"encoding/json"
+);
 
 //-----------------------------------------------//
 

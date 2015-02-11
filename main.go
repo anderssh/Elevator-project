@@ -1,19 +1,21 @@
 package main;
 
 import(
-	"fmt"
 	"./src/network"
 	"./src/driver"
 	"./src/log"
+	"./src/formatter/JSON"
 	"time"
 	"net"
+	"fmt"
 );
 
 func read(r chan network.Message) {
 	for {
 		select {
-			case message := <- r:
-				fmt.Println(message.Data);
+			case <- r:
+				
+				//fmt.Println(message.Data);
 		}
 	}
 }
@@ -34,6 +36,25 @@ func main() {
 	log.SetLogLevel(log.LOG_LEVEL_DEBUG);
 	log.Debug(123);
 	log.Error("Mayday, mayday!");
+
+	type person struct{
+		Skostrls 	int
+		Navn 		string
+	}
+
+	var Patrick person;
+	Patrick.Skostrls = 45;
+	Patrick.Navn = "Patrish";
+
+	hallo, _ := JSON.Encode(Patrick);
+	fmt.Println(Patrick);
+
+	fmt.Println(string(hallo));
+	var halla person;
+	error := JSON.Decode(hallo, &halla);
+	
+	fmt.Println(halla);
+	fmt.Println(error);
 
 	receiveChannel := make(chan network.Message);
 	sendChannel := make(chan network.Message);

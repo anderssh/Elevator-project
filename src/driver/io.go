@@ -67,10 +67,10 @@ func Initialize() bool {
 	err := C.io_init();
 
 	if err == 0 {
-		return false;
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 //-----------------------------------------------//
