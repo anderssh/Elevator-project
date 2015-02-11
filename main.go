@@ -3,10 +3,10 @@ package main;
 import(
 	"fmt"
 	"./src/network"
+	"./src/driver"
 	"time"
 	"net"
 );
-
 
 func read(r chan network.Message) {
 	for {
@@ -37,6 +37,9 @@ func main() {
 	
 	go read(receiveChannel);
 	go send(sendChannel);
+
+	s := driver.Initialize();
+	fmt.Println(s);
 
 	d_chan := make(chan bool, 1);
 	<- d_chan;
