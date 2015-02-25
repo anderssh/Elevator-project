@@ -1,4 +1,4 @@
-package driver;
+package io;
 
 /*
 #cgo LDFLAGS: -lcomedi -lm
