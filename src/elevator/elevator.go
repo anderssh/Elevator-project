@@ -3,17 +3,26 @@ package elevator;
 import(
 	"../io"
 	"time"
-	"../log"
 );
 
 //-----------------------------------------------//
 
-type Direction int;
+type Direction 	int;
+type ButtonType int;
 
 const(
-	DIRECTION_UP 	Direction = iota
-	DIRECTION_DOWN 	Direction = iota
+	DIRECTION_UP 		Direction 	= iota
+	DIRECTION_DOWN 		Direction 	= iota
+
+	BUTTON_CALL_UP  	ButtonType  = iota
+	BUTTON_CALL_DOWN  	ButtonType  = iota
+	BUTTON_CALL_INSIDE  ButtonType  = iota
 );
+
+type Button struct {
+	Type 		ButtonType
+	Floor 		int
+}
 
 //-----------------------------------------------//
 
@@ -44,37 +53,43 @@ func Initialize() bool {
 
 //-----------------------------------------------//
 
-func RegisterEvents(eventReachedNewFloor chan int) {
+func registerEventFloorReached(eventReachedNewFloor chan int) {
 	
-	for {
-
-		if io.ReadBit(io.SENSOR_FLOOR1) == 1 {
-			eventReachedNewFloor <- 1;
-		} else if io.ReadBit(io.SENSOR_FLOOR2) == 1 {
-			eventReachedNewFloor <- 2;
-		} else if io.ReadBit(io.SENSOR_FLOOR3) == 1 {
-			eventReachedNewFloor <- 3;
-		} else if io.ReadBit(io.SENSOR_FLOOR4) == 1 {
-			eventReachedNewFloor <- 4;
-		}
-
-		time.Sleep(time.Microsecond*10);
+	if io.IsBitSet(io.SENSOR_FLOOR1) {
+		eventReachedNewFloor <- 1;
+	} else if io.IsBitSet(io.SENSOR_FLOOR2) {
+		eventReachedNewFloor <- 2;
+	} else if io.IsBitSet(io.SENSOR_FLOOR3) {
+		eventReachedNewFloor <- 3;
+	} else if io.IsBitSet(io.SENSOR_FLOOR4) {
+		eventReachedNewFloor <- 4;
 	}
 }
 
-var eventReachedNewFloor chan int;
+func registerEventStop(eventStop chan bool) {
+		
+}
 
-func Run() {
+func registerEventObstruction(eventObstruction chan bool) {
+		
+}
 
-	go RegisterEvents(eventReachedNewFloor);
-	
-	DriveInDirection(DIRECTION_UP);
+func registerEventButtonPressed(eventButtonPressed chan Button) {
+		
+}
 
+
+
+//-----------------------------------------------//
+
+func RegisterEvents(eventReachedNewFloor chan int, eventStop chan bool, eventObstruction chan bool, eventButtonPressed chan Button) {
+		
 	for {
-		select {
-			case floor := <- eventReachedNewFloor:
-				log.Data(floor);
-				Stop();
-		}
+		registerEventFloorReached(eventReachedNewFloor);
+		registerEventStop(eventStop);
+		registerEventObstruction(eventObstruction);
+		registerEventButtonPressed(eventButtonPressed);
+		
+		time.Sleep(time.Microsecond*50);
 	}
 }

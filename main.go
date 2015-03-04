@@ -1,20 +1,13 @@
 package main;
 
 import(
-	"./src/elevator"
+	"./src/elevatorController"
 );
 
 
 func main() {
 
-
-	s := elevator.Initialize();
-	if (s) {
-
-	}
-
-
-	elevator.Run();
+	elevatorController.Run();
 
 	d_chan := make(chan bool, 1);
 	<- d_chan;
