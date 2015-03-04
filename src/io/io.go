@@ -83,8 +83,13 @@ func ClearBit(busChannel int){
 	C.io_clear_bit(C.int(busChannel));	
 }
 
-func ReadBit(busChannel int) int { 
-	return int(C.io_read_bit(C.int(busChannel)));
+func IsBitSet(busChannel int) bool { 
+
+	if int(C.io_read_bit(C.int(busChannel))) == 1 {
+		return true;
+	}
+
+	return false;
 }
 
 //-----------------------------------------------//
