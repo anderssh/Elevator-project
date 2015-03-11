@@ -4,23 +4,16 @@ import (
 	"../io"
 	"time"
 	"../log"
+	. "../systemTypes"
 )
 
 //-----------------------------------------------//
 
 type Direction int
-type ButtonType int
 
 const (
 	DIRECTION_UP   		Direction = iota
 	DIRECTION_DOWN 		Direction = iota
-
-	BUTTON_CALL_UP     ButtonType = iota
-	BUTTON_CALL_DOWN   ButtonType = iota
-	BUTTON_CALL_INSIDE ButtonType = iota
-
-	BUTTON_STOP        ButtonType = iota
-	BUTTON_OBSTRUCTION ButtonType = iota
 
 	NUMBER_OF_FLOORS int = 4
 )
@@ -31,23 +24,8 @@ type ErrorElevator struct {
     errorMessage string
 }
 
-func (e *ErrorElevator) Error() string {
-    return "Elevator error: " + e.errorMessage
-}
-
-//-----------------------------------------------//
-
-type ButtonFloor struct {
-	Type       ButtonType
-	Floor      int
-	Pressed    bool
-	BusChannel int
-}
-
-type ButtonSimple struct {
-	Type       ButtonType
-	Pressed    bool
-	BusChannel int
+func (err *ErrorElevator) Error() string {
+    return "Elevator error: " + err.errorMessage
 }
 
 //-----------------------------------------------//
@@ -81,8 +59,7 @@ func Stop() {
 func Initialize() *ErrorElevator {
 
 	err := io.Initialize();
-	log.Data("up")
-	io.SetBit(io.LIGHT_FLOOR_IND2)
+
 	if err != nil {
 		log.Error(err)
 		return &ErrorElevator{"Failed to initialize hardware."};
