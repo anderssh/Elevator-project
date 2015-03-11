@@ -22,18 +22,25 @@ func SetLogLevel(newLogLevel int) {
 //-----------------------------------------------//
 
 func Error(value interface{}) {
+	
 	if logLevel >= LOG_ERROR {
-		fmt.Println(value);
+		fmt.Print("\x1b[31;1m");
+		fmt.Print(value);
+		fmt.Println("\x1b[0m");
 	}
 }
 
 func Warning(value interface{}) {
+	
 	if logLevel >= LOG_WARNING {
-		fmt.Println(value);
+		fmt.Print("\x1b[33;1m");
+		fmt.Print(value);
+		fmt.Println("\x1b[0m");
 	}
 }
 
 func Data(value interface{}) {
+
 	if logLevel >= LOG_ALL {
 		fmt.Println(value);
 	}

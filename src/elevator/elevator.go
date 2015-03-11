@@ -3,6 +3,7 @@ package elevator
 import (
 	"../io"
 	"time"
+	"../log"
 )
 
 //-----------------------------------------------//
@@ -11,8 +12,8 @@ type Direction int
 type ButtonType int
 
 const (
-	DIRECTION_UP   Direction = iota
-	DIRECTION_DOWN Direction = iota
+	DIRECTION_UP   		Direction = iota
+	DIRECTION_DOWN 		Direction = iota
 
 	BUTTON_CALL_UP     ButtonType = iota
 	BUTTON_CALL_DOWN   ButtonType = iota
@@ -23,6 +24,18 @@ const (
 
 	NUMBER_OF_FLOORS int = 4
 )
+
+//-----------------------------------------------//
+
+type ErrorElevator struct {
+    errorMessage string
+}
+
+func (e *ErrorElevator) Error() string {
+    return "Elevator error: " + e.errorMessage
+}
+
+//-----------------------------------------------//
 
 type ButtonFloor struct {
 	Type       ButtonType
@@ -41,14 +54,15 @@ type ButtonSimple struct {
 
 var numberOfFloors int = 4
 
-var buttonStop ButtonSimple
-var buttonObstruction ButtonSimple
+var buttonStop 			ButtonSimple
+var buttonObstruction 	ButtonSimple
 
 var panel []ButtonFloor
 
 //-----------------------------------------------//
 
 func DriveInDirection(direction Direction) {
+
 	if direction == DIRECTION_DOWN {
 		io.SetBit(io.MOTORDIR)
 		io.WriteAnalog(io.MOTOR, 2800)
@@ -64,32 +78,36 @@ func Stop() {
 
 //-----------------------------------------------//
 
-func Initialize() bool {
+func Initialize() *ErrorElevator {
 
-	if !io.Initialize() {
-		return false
+	err := io.Initialize();
+	log.Data("up")
+	io.SetBit(io.LIGHT_FLOOR_IND2)
+	if err != nil {
+		log.Error(err)
+		return &ErrorElevator{"Failed to initialize hardware."};
 	}
 
-	buttonStop = ButtonSimple{BUTTON_STOP, false, io.STOP}
-	buttonObstruction = ButtonSimple{BUTTON_OBSTRUCTION, false, io.OBSTRUCTION}
+	buttonStop 			= ButtonSimple{BUTTON_STOP, 		false, io.STOP}
+	buttonObstruction 	= ButtonSimple{BUTTON_OBSTRUCTION, 	false, io.OBSTRUCTION}
 
 	panel = make([]ButtonFloor, (NUMBER_OF_FLOORS*3)-2)
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 1, false, io.BUTTON_UP1})
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 1, false, io.BUTTON_COMMAND1})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 		1, false, io.BUTTON_UP1})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	1, false, io.BUTTON_COMMAND1})
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 2, false, io.BUTTON_UP2})
-	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 2, false, io.BUTTON_DOWN2})
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 2, false, io.BUTTON_COMMAND2})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 		2, false, io.BUTTON_UP2})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 	2, false, io.BUTTON_DOWN2})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	2, false, io.BUTTON_COMMAND2})
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 3, false, io.BUTTON_UP3})
-	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 3, false, io.BUTTON_DOWN3})
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 3, false, io.BUTTON_COMMAND3})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 		3, false, io.BUTTON_UP3})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 	3, false, io.BUTTON_DOWN3})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	3, false, io.BUTTON_COMMAND3})
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 4, false, io.BUTTON_DOWN4})
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 4, false, io.BUTTON_COMMAND4})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 	4, false, io.BUTTON_DOWN4})
+	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	4, false, io.BUTTON_COMMAND4})
 
-	return true
+	return nil;
 }
 
 //-----------------------------------------------//
@@ -150,7 +168,10 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
 //-----------------------------------------------//
 
-func RegisterEvents(eventReachedNewFloor chan int, eventStop chan bool, eventObstruction chan bool, eventButtonFloorPressed chan ButtonFloor) {
+func RegisterEvents(eventReachedNewFloor 	chan int,
+					eventStop 				chan bool,
+					eventObstruction 		chan bool,
+					eventButtonFloorPressed chan ButtonFloor) {
 
 	for {
 		registerEventFloorReached(eventReachedNewFloor)

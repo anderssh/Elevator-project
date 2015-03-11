@@ -123,15 +123,19 @@ func stateMachine() {
 func Run() {
 
 	err := elevator.Initialize()
-	log.Data(err)
 
+	if err != nil{
+		log.Error(err)
+	}
+
+	log.Warning("asd")
 	currentState = STATE_STARTUP
 	elevator.DriveInDirection(elevator.DIRECTION_DOWN)
 
-	go elevator.RegisterEvents(eventReachedNewFloor,
-		eventStop,
-		eventObstruction,
-		eventButtonFloorPressed)
+	//go elevator.RegisterEvents(eventReachedNewFloor,
+	//	eventStop,
+	//	eventObstruction,
+	//	eventButtonFloorPressed)
 
-	go stateMachine()
+	//go stateMachine()
 }
