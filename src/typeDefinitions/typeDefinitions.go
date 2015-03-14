@@ -14,16 +14,19 @@ const(
 );
 
 type ButtonFloor struct {
-	Type       ButtonType
-	Floor      int
-	Pressed    bool
-	BusChannel int
+	Type       			ButtonType
+	Floor 				int
+	Pressed				bool
+	Light				bool
+	BusChannelPressed 	int
+	BusChannelLight	int
 }
 
 type ButtonSimple struct {
-	Type       ButtonType
-	Pressed    bool
-	BusChannel int
+	Type       			ButtonType
+	Pressed    			bool
+	Light				bool
+	BusChannelPressed 	int
 }
 
 //-----------------------------------------------//
