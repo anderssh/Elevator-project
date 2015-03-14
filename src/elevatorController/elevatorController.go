@@ -172,7 +172,7 @@ func handleEventCloseDoor() {
 
 		case STATE_DOOR_OPEN:
 
-			orders.RemoveOnFloor(floorLastVisited);
+			orders.RemoveOnFloor(elevator.GetPreviouslyReachedFloor());
 
 			if orders.Exists() {
 
@@ -189,7 +189,7 @@ func handleEventCloseDoor() {
 				} else {
 
 					if floorDestination > elevator.GetPreviouslyReachedFloor() {
-						elevator.DriveInDirection(elevator.DIRECTION_UP);
+						elevator.DriveInDirection(DIRECTION_UP);
 					} else {
 						elevator.DriveInDirection(DIRECTION_DOWN);
 					}
@@ -237,7 +237,7 @@ func handleEventNewOrder(order Order) {
 		case STATE_IDLE:
 
 			if !orders.AllreadyStored(order) {
-				orders.Add(order, floorLastVisited, currentState == STATE_MOVING, elevator.GetDirection());
+				orders.Add(order, elevator.GetPreviouslyReachedFloor(), currentState == STATE_MOVING, elevator.GetDirection());
 			}
 
 			if orders.Exists() {
@@ -251,13 +251,8 @@ func handleEventNewOrder(order Order) {
 						eventCloseDoor <- true;
 					});
 
-<<<<<<< HEAD
 				} else if floorDestination < elevator.GetPreviouslyReachedFloor() {
-					elevator.DriveInDirection(elevator.DIRECTION_DOWN);
-=======
-				} else if floorDestination < floorLastVisited {
 					elevator.DriveInDirection(DIRECTION_DOWN);
->>>>>>> orderImprovement
 					currentState = STATE_MOVING;
 				} else {
 					elevator.DriveInDirection(DIRECTION_UP);
@@ -268,14 +263,14 @@ func handleEventNewOrder(order Order) {
 		case STATE_MOVING:
 
 			if !orders.AllreadyStored(order) {
-				orders.Add(order, floorLastVisited, currentState == STATE_MOVING, elevator.GetDirection());
+				orders.Add(order, elevator.GetPreviouslyReachedFloor(), currentState == STATE_MOVING, elevator.GetDirection());
 				floorDestination = orders.GetDestination();
 			}
 
 		case STATE_DOOR_OPEN:
 
 			if !orders.AllreadyStored(order) {
-				orders.Add(order, floorLastVisited, currentState == STATE_MOVING, elevator.GetDirection());
+				orders.Add(order, elevator.GetPreviouslyReachedFloor(), currentState == STATE_MOVING, elevator.GetDirection());
 				floorDestination = orders.GetDestination();
 			}
 	}
