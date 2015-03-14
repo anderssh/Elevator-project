@@ -23,7 +23,6 @@ const (
 
 var currentState 		State;
 var floorDestination 	int;
-var floorLastVisited 	int;
 
 var eventReachedNewFloor 	chan int 			= make(chan int)
 var eventCloseDoor 			chan bool 			= make(chan bool)
@@ -43,12 +42,12 @@ func handleEventReachedNewFloor(floorReached int) {
 
 			elevator.Stop()
 
-			floorLastVisited 	= floorReached;
+			elevator.SetPreviouslyReachedFloor(floorReached);
 			currentState 		= STATE_IDLE;
 
 		case STATE_IDLE:
 
-			floorLastVisited 	= floorReached;
+			elevator.SetPreviouslyReachedFloor(floorReached);
 
 		case STATE_MOVING:
 
@@ -62,11 +61,11 @@ func handleEventReachedNewFloor(floorReached int) {
 				});
 			}
 
-			floorLastVisited = floorReached;
+			elevator.SetPreviouslyReachedFloor(floorReached);
 
 		case STATE_DOOR_OPEN:
 
-			floorLastVisited = floorReached;
+			elevator.SetPreviouslyReachedFloor(floorReached);
 	}
 }
 
@@ -95,11 +94,11 @@ func handleEventCloseDoor() {
 
 				floorDestination = orders.GetDestination();
 			
-				if floorDestination == floorLastVisited {
+				if floorDestination == elevator.GetPreviouslyReachedFloor() {
 					currentState = STATE_IDLE;
 				} else {
 
-					if floorDestination > floorLastVisited {
+					if floorDestination > elevator.GetPreviouslyReachedFloor() {
 						elevator.DriveInDirection(elevator.DIRECTION_UP);
 					} else {
 						elevator.DriveInDirection(elevator.DIRECTION_DOWN);
@@ -155,14 +154,14 @@ func handleEventNewOrder(order Order) {
 
 				floorDestination = orders.GetDestination();
 				
-				if (floorDestination == floorLastVisited) {
+				if (floorDestination == elevator.GetPreviouslyReachedFloor()) {
 					
 					currentState = STATE_DOOR_OPEN;
 					time.AfterFunc(time.Second*3, func() { // Close the door
 						eventCloseDoor <- true
 					});
 
-				} else if floorDestination < floorLastVisited {
+				} else if floorDestination < elevator.GetPreviouslyReachedFloor() {
 					elevator.DriveInDirection(elevator.DIRECTION_DOWN);
 				} else {
 					elevator.DriveInDirection(elevator.DIRECTION_UP);

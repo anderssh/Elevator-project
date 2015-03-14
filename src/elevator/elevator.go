@@ -30,12 +30,13 @@ func (err *ErrorElevator) Error() string {
 
 //-----------------------------------------------//
 
-var numberOfFloors 		int 			= 4;
+var numberOfFloors 			int 	= 4;
+var previouslyReachedFloor 	int 	= -1;
 
 var buttonStop 			ButtonSimple
 var buttonObstruction 	ButtonSimple
 
-var panel []ButtonFloor
+var containerButtonFloor []ButtonFloor
 
 //-----------------------------------------------//
 
@@ -56,23 +57,30 @@ func Stop() {
 
 //-----------------------------------------------//
 
-func initializePanel() {
+func initializeContainerButtonFloor() {
 	
-	panel = make([]ButtonFloor, (NUMBER_OF_FLOORS*3)-2);
+	containerButtonFloor = make([]ButtonFloor, (NUMBER_OF_FLOORS*3)-2);
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 		1, false, io.BUTTON_UP1});
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	1, false, io.BUTTON_COMMAND1});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_UP, 		1, false, false, io.BUTTON_UP1, io.LIGHT_UP1});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_INSIDE, 	1, false, false, io.BUTTON_CALL_INSIDE1, io.LIGHT_CALL_INSIDE1});
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 		2, false, io.BUTTON_UP2});
-	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 	2, false, io.BUTTON_DOWN2});
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	2, false, io.BUTTON_COMMAND2});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_UP, 		2, false, false, io.BUTTON_UP2, io.LIGHT_UP2});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_DOWN, 	2, false, false, io.BUTTON_DOWN2, io.LIGHT_DOWN2});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_INSIDE, 	2, false, false, io.BUTTON_CALL_INSIDE2, io.LIGHT_CALL_INSIDE2});
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_UP, 		3, false, io.BUTTON_UP3});
-	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 	3, false, io.BUTTON_DOWN3});
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	3, false, io.BUTTON_COMMAND3});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_UP, 		3, false, false, io.BUTTON_UP3, io.LIGHT_UP3});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_DOWN, 	3, false, false, io.BUTTON_DOWN3, io.LIGHT_DOWN3});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_INSIDE, 	3, false, false, io.BUTTON_CALL_INSIDE3, io.LIGHT_CALL_INSIDE3});
 
-	panel = append(panel, ButtonFloor{BUTTON_CALL_DOWN, 	4, false, io.BUTTON_DOWN4});
-	panel = append(panel, ButtonFloor{BUTTON_CALL_INSIDE, 	4, false, io.BUTTON_COMMAND4});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_DOWN, 	4, false, false, io.BUTTON_DOWN4, io.LIGHT_DOWN4});
+	containerButtonFloor = append(containerButtonFloor, ButtonFloor{BUTTON_CALL_INSIDE, 	4, false, false, io.BUTTON_CALL_INSIDE4, io.LIGHT_CALL_INSIDE4});
+}
+
+func initializeSimpleBottons() {
+
+	buttonStop 			= ButtonSimple{BUTTON_STOP, 		false, false, io.STOP};
+	buttonObstruction 	= ButtonSimple{BUTTON_OBSTRUCTION, 	false, false, io.OBSTRUCTION};
+
 }
 
 func Initialize() *ErrorElevator {
@@ -84,46 +92,74 @@ func Initialize() *ErrorElevator {
 		return &ErrorElevator{"Failed to initialize hardware."};
 	}
 
-	buttonStop 			= ButtonSimple{BUTTON_STOP, 		false, io.STOP};
-	buttonObstruction 	= ButtonSimple{BUTTON_OBSTRUCTION, 	false, io.OBSTRUCTION};
-
-	initializePanel();
+	initializeContainerButtonFloor();
+	initializeSimpleBottons();
 
 	return nil;
 }
 
 //-----------------------------------------------//
 
-var previouslyReachedFloor int = -1;
+func setFloorIndicatorLight(floorReached int){
 
-func registerEventFloorReached(eventReachedNewFloor chan int) {
+	bit_1 :=  (floorReached - 1) 		% 2;
+	bit_2 := ((floorReached - 1) >> 1)  % 2;
+	
+	log.Data("..")
+	log.Data(floorReached)
+	log.Data(bit_1)
+	log.Data(bit_2)
+
+	if bit_2 == 1 {
+		io.SetBit(io.LIGHT_FLOOR_INDICATOR1)
+	} else {
+		io.ClearBit(io.LIGHT_FLOOR_INDICATOR1)
+	}
+
+	if bit_1 == 1 {
+		io.SetBit(io.LIGHT_FLOOR_INDICATOR2)
+	} else {
+		io.ClearBit(io.LIGHT_FLOOR_INDICATOR2)
+	}	
+}
+
+//-----------------------------------------------//
+
+func SetPreviouslyReachedFloor(floorReached int){
+	
+	previouslyReachedFloor = floorReached;
+	setFloorIndicatorLight(floorReached);
+
+}
+
+func GetPreviouslyReachedFloor() int{
+	return previouslyReachedFloor;
+}
+
+func registerEventReachedFloor(eventReachedNewFloor chan int) {
 
 	if io.IsBitSet(io.SENSOR_FLOOR1) {
 
 		if previouslyReachedFloor != 1 {
 			eventReachedNewFloor  <- 1;
-			previouslyReachedFloor = 1;
 		}
 
 	} else if io.IsBitSet(io.SENSOR_FLOOR2) {
 	
 		if previouslyReachedFloor != 2 {
 			eventReachedNewFloor  <- 2;
-			previouslyReachedFloor = 2;
 		}
 
 	} else if io.IsBitSet(io.SENSOR_FLOOR3) {
 
 		if previouslyReachedFloor != 3 {
 			eventReachedNewFloor  <- 3;
-			previouslyReachedFloor = 3;
 		}
 
 	} else if io.IsBitSet(io.SENSOR_FLOOR4) {
 		
 		if previouslyReachedFloor != 4 {
 			eventReachedNewFloor  <- 4;
-			previouslyReachedFloor = 4;
 		}
 	}
 }
@@ -133,7 +169,7 @@ func registerEventFloorReached(eventReachedNewFloor chan int) {
 func registerEventStop(eventStop chan bool) {
 
 	buttonStopPreviouslyPressed := buttonStop.Pressed;
-	buttonStop.Pressed = io.IsBitSet(buttonStop.BusChannel);
+	buttonStop.Pressed = io.IsBitSet(buttonStop.BusChannelPressed);
 
 	if buttonStop.Pressed && !buttonStopPreviouslyPressed {
 		eventStop <- true
@@ -145,7 +181,7 @@ func registerEventStop(eventStop chan bool) {
 func registerEventObstruction(eventObstruction chan bool) {
 
 	buttonObstructionPreviouslyPressed := buttonObstruction.Pressed;
-	buttonObstruction.Pressed = io.IsBitSet(buttonObstruction.BusChannel);
+	buttonObstruction.Pressed = io.IsBitSet(buttonObstruction.BusChannelPressed);
 
 	if buttonObstruction.Pressed && !buttonObstructionPreviouslyPressed {
 		eventObstruction <- true;
@@ -158,13 +194,13 @@ func registerEventObstruction(eventObstruction chan bool) {
 
 func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
-	for buttonIndex := range panel {
+	for buttonIndex := range containerButtonFloor {
 
-		buttonPreviouslyPressed := panel[buttonIndex].Pressed;
-		panel[buttonIndex].Pressed = io.IsBitSet(panel[buttonIndex].BusChannel);
+		buttonPreviouslyPressed := containerButtonFloor[buttonIndex].Pressed;
+		containerButtonFloor[buttonIndex].Pressed = io.IsBitSet(containerButtonFloor[buttonIndex].BusChannelPressed);
 
-		if panel[buttonIndex].Pressed && !buttonPreviouslyPressed {
-			eventButtonFloorPressed <- panel[buttonIndex];
+		if containerButtonFloor[buttonIndex].Pressed && !buttonPreviouslyPressed {
+			eventButtonFloorPressed <- containerButtonFloor[buttonIndex];
 		}
 	}
 }
@@ -177,7 +213,7 @@ func RegisterEvents(eventReachedNewFloor 	chan int,
 					eventButtonFloorPressed chan ButtonFloor) {
 
 	for {
-		registerEventFloorReached(eventReachedNewFloor)
+		registerEventReachedFloor(eventReachedNewFloor)
 		registerEventStop(eventStop)
 		registerEventObstruction(eventObstruction)
 		registerEventButtonFloorPressed(eventButtonFloorPressed)
