@@ -64,7 +64,7 @@ func Display() {
 		fmt.Print(floor);
 		fmt.Print("|"); // Left wall
 
-		if floorLastVisited == floor {
+		if elevator.GetPreviouslyReachedFloor() == floor {
 			fmt.Print("\x1b[33;1m");
 			fmt.Print("+++");
 			fmt.Print("\x1b[0m");
@@ -74,7 +74,7 @@ func Display() {
 
 		fmt.Print("|"); // Right wall
 
-		if currentState == STATE_DOOR_OPEN && floorLastVisited == floor {
+		if currentState == STATE_DOOR_OPEN && elevator.GetPreviouslyReachedFloor() == floor {
 			fmt.Print("->");
 		} else {
 			fmt.Print("  ");
