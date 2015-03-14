@@ -2,6 +2,15 @@ package typeDefinitions;
 
 //-----------------------------------------------//
 
+type Direction int
+
+const(
+	DIRECTION_UP   		Direction 	= iota
+	DIRECTION_DOWN 		Direction 	= iota
+);
+
+//-----------------------------------------------//
+
 type ButtonType int
 
 const(
@@ -9,8 +18,8 @@ const(
 	BUTTON_CALL_DOWN   	ButtonType = iota
 	BUTTON_CALL_INSIDE 	ButtonType = iota
 
-	BUTTON_STOP        ButtonType = iota
-	BUTTON_OBSTRUCTION ButtonType = iota
+	BUTTON_STOP         ButtonType = iota
+	BUTTON_OBSTRUCTION  ButtonType = iota
 );
 
 type ButtonFloor struct {

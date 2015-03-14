@@ -173,20 +173,27 @@ func handleEventCloseDoor() {
 
 		case STATE_DOOR_OPEN:
 
-			orders.RemoveTop();
+			orders.RemoveOnFloor(floorLastVisited);
 
 			if orders.Exists() {
 
 				floorDestination = orders.GetDestination();
 			
 				if floorDestination == floorLastVisited {
-					currentState = STATE_IDLE;
+
+					log.Warning("Orders still on floor when door closed.");
+					currentState = STATE_DOOR_OPEN;
+
+					time.AfterFunc(time.Second*3, func() { // Close the door
+						eventCloseDoor <- true
+					});
+
 				} else {
 
 					if floorDestination > floorLastVisited {
-						elevator.DriveInDirection(elevator.DIRECTION_UP);
+						elevator.DriveInDirection(DIRECTION_UP);
 					} else {
-						elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+						elevator.DriveInDirection(DIRECTION_DOWN);
 					}
 
 					currentState = STATE_MOVING;
@@ -232,7 +239,7 @@ func handleEventNewOrder(order Order) {
 		case STATE_IDLE:
 
 			if !orders.AllreadyStored(order) {
-				orders.Add(order);
+				orders.Add(order, floorLastVisited, currentState == STATE_MOVING, elevator.GetDirection());
 			}
 
 			if orders.Exists() {
@@ -247,10 +254,10 @@ func handleEventNewOrder(order Order) {
 					});
 
 				} else if floorDestination < floorLastVisited {
-					elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+					elevator.DriveInDirection(DIRECTION_DOWN);
 					currentState = STATE_MOVING;
 				} else {
-					elevator.DriveInDirection(elevator.DIRECTION_UP);
+					elevator.DriveInDirection(DIRECTION_UP);
 					currentState = STATE_MOVING;
 				}
 			}
@@ -258,13 +265,15 @@ func handleEventNewOrder(order Order) {
 		case STATE_MOVING:
 
 			if !orders.AllreadyStored(order) {
-				orders.Add(order);
+				orders.Add(order, floorLastVisited, currentState == STATE_MOVING, elevator.GetDirection());
+				floorDestination = orders.GetDestination();
 			}
 
 		case STATE_DOOR_OPEN:
 
 			if !orders.AllreadyStored(order) {
-				orders.Add(order);
+				orders.Add(order, floorLastVisited, currentState == STATE_MOVING, elevator.GetDirection());
+				floorDestination = orders.GetDestination();
 			}
 	}
 }
@@ -321,7 +330,7 @@ func Initialize(orderHandlerArg chan Order, eventNewOrderArg chan Order) {
 
 	currentState 	= STATE_STARTUP;
 
-	elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+	elevator.DriveInDirection(DIRECTION_DOWN);
 }
 
 func Run() {
