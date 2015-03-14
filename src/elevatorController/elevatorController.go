@@ -85,7 +85,7 @@ func Display() {
 
 		fmt.Print("\t");
 
-		if orders.AllreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
+		if orders.AlreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
 			fmt.Print("\x1b[31;1m");
 			fmt.Print("O");
 			fmt.Print("\x1b[0m");
@@ -95,7 +95,7 @@ func Display() {
 
 		fmt.Print(" ");
 
-		if orders.AllreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
+		if orders.AlreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
 			fmt.Print("\x1b[31;1m");
 			fmt.Print("^");
 			fmt.Print("\x1b[0m");
@@ -105,7 +105,7 @@ func Display() {
 
 		fmt.Print(" ");
 
-		if orders.AllreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
+		if orders.AlreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
 			fmt.Print("\x1b[31;1m");
 			fmt.Print("_");
 			fmt.Print("\x1b[0m");
@@ -171,21 +171,28 @@ func handleEventCloseDoor() {
 			log.Warning("Closed door in state moving");
 
 		case STATE_DOOR_OPEN:
+
 			elevator.TurnOffLightDoorOpen();
-			orders.RemoveTop();
+			orders.RemoveOnFloor(elevator.GetPreviouslyReachedFloor());
 
 			if orders.Exists() {
 
 				floorDestination = orders.GetDestination();
 			
 				if floorDestination == elevator.GetPreviouslyReachedFloor() {
-					currentState = STATE_IDLE;
+					
+					log.Warning("Orders still on floor when door closed.");
+					currentState = STATE_DOOR_OPEN;
+					time.AfterFunc(time.Second*3, func() { // Close the door
+						eventCloseDoor <- true
+					});
+
 				} else {
 
 					if floorDestination > elevator.GetPreviouslyReachedFloor() {
-						elevator.DriveInDirection(elevator.DIRECTION_UP);
+						elevator.DriveInDirection(DIRECTION_UP);
 					} else {
-						elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+						elevator.DriveInDirection(DIRECTION_DOWN);
 					}
 
 					currentState = STATE_MOVING;
@@ -230,8 +237,8 @@ func handleEventNewOrder(order Order) {
 
 		case STATE_IDLE:
 
-			if !orders.AllreadyStored(order) {
-				orders.Add(order);
+			if !orders.AlreadyStored(order) {
+				orders.Add(order, elevator.GetPreviouslyReachedFloor(), currentState == STATE_MOVING, elevator.GetDirection());
 			}
 
 			if orders.Exists() {
@@ -247,24 +254,26 @@ func handleEventNewOrder(order Order) {
 					});
 
 				} else if floorDestination < elevator.GetPreviouslyReachedFloor() {
-					elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+					elevator.DriveInDirection(DIRECTION_DOWN);
 					currentState = STATE_MOVING;
 				} else {
-					elevator.DriveInDirection(elevator.DIRECTION_UP);
+					elevator.DriveInDirection(DIRECTION_UP);
 					currentState = STATE_MOVING;
 				}
 			}
 
 		case STATE_MOVING:
 
-			if !orders.AllreadyStored(order) {
-				orders.Add(order);
+			if !orders.AlreadyStored(order) {
+				orders.Add(order, elevator.GetPreviouslyReachedFloor(), currentState == STATE_MOVING, elevator.GetDirection());
+				floorDestination = orders.GetDestination();
 			}
 
 		case STATE_DOOR_OPEN:
 
-			if !orders.AllreadyStored(order) {
-				orders.Add(order);
+			if !orders.AlreadyStored(order) {
+				orders.Add(order, elevator.GetPreviouslyReachedFloor(), currentState == STATE_MOVING, elevator.GetDirection());
+				floorDestination = orders.GetDestination();
 			}
 	}
 }
@@ -321,7 +330,7 @@ func Initialize(orderHandlerArg chan Order, eventNewOrderArg chan Order) {
 
 	currentState 	= STATE_STARTUP;
 
-	elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+	elevator.DriveInDirection(DIRECTION_DOWN);
 }
 
 func Run() {

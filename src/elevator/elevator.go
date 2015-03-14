@@ -9,12 +9,7 @@ import (
 
 //-----------------------------------------------//
 
-type Direction int
-
 const (
-	DIRECTION_UP   		Direction 	= iota
-	DIRECTION_DOWN 		Direction 	= iota
-
 	NUMBER_OF_FLOORS 	int 		= 4
 )
 
@@ -40,19 +35,32 @@ var containerButtonFloor []ButtonFloor
 
 //-----------------------------------------------//
 
-func DriveInDirection(direction Direction) {
+var direction Direction;
 
-	if direction == DIRECTION_DOWN {
-		io.SetBit(io.MOTORDIR)
-		io.WriteAnalog(io.MOTOR, 2800)
+func GetDirection() Direction {
+	return direction;
+}
+
+//-----------------------------------------------//
+
+func DriveInDirection(requestedDirection Direction) {
+
+	if requestedDirection == DIRECTION_DOWN {
+
+		io.SetBit(io.MOTORDIR);
+		io.WriteAnalog(io.MOTOR, 2800);
+
 	} else {
-		io.ClearBit(io.MOTORDIR)
-		io.WriteAnalog(io.MOTOR, 2800)
+
+		io.ClearBit(io.MOTORDIR);
+		io.WriteAnalog(io.MOTOR, 2800);
 	}
+
+	direction = requestedDirection;
 }
 
 func Stop() {
-	io.WriteAnalog(io.MOTOR, 0)
+	io.WriteAnalog(io.MOTOR, 0);
 }
 
 //-----------------------------------------------//
