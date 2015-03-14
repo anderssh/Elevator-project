@@ -1,4 +1,4 @@
-package systemTypes;
+package typeDefinitions;
 
 //-----------------------------------------------//
 

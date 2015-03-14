@@ -1,7 +1,7 @@
 package elevatorController
 
 import (
-	. "../systemTypes"
+	. "../typeDefinitions"
 	"../elevator"
 	"../log"
 	"../orders"

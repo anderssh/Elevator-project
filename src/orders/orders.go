@@ -3,7 +3,7 @@
 package orders;
 
 import(
-	. "../systemTypes"
+	. "../typeDefinitions"
 );
 
 //-----------------------------------------------//
@@ -15,10 +15,10 @@ var orders []Order;
 func Exists() bool {
 	
 	if len(orders) > 0{
-		return true
+		return true;
 	}
 
-	return false
+	return false;
 }
 
 func AllreadyStored(order Order) bool {
@@ -35,7 +35,7 @@ func AllreadyStored(order Order) bool {
 //-----------------------------------------------//
 
 func GetDestination() int {
-	return orders[0].Floor
+	return orders[0].Floor;
 }
 
 //-----------------------------------------------//

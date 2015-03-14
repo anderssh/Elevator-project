@@ -1,7 +1,7 @@
 package systemController;
 
 import(
-	. "../systemTypes"
+	. "../typeDefinitions"
 	"../elevatorController"
 );
 
