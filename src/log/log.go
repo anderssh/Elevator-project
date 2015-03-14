@@ -25,6 +25,7 @@ func Error(value interface{}) {
 	
 	if logLevel >= LOG_ERROR {
 		fmt.Print("\x1b[31;1m");
+		fmt.Print("Error: ");
 		fmt.Print(value);
 		fmt.Println("\x1b[0m");
 	}
@@ -34,6 +35,7 @@ func Warning(value interface{}) {
 	
 	if logLevel >= LOG_WARNING {
 		fmt.Print("\x1b[33;1m");
+		fmt.Print("Warning: ");
 		fmt.Print(value);
 		fmt.Println("\x1b[0m");
 	}

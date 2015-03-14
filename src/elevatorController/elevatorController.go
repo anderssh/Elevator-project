@@ -204,7 +204,7 @@ func handleEventButtonPressed(button ButtonFloor) {
 	switch currentState {
 		case STATE_STARTUP:
 
-			// Nothing
+			log.Warning("Tried to order at startup. Order not registered.");
 
 		case STATE_IDLE:
 
@@ -227,7 +227,7 @@ func handleEventNewOrder(order Order) {
 	switch currentState {
 		case STATE_STARTUP:
 
-			// Nothing
+			log.Warning("Tried to handle order at startup. Order not registered.");
 
 		case STATE_IDLE:
 
@@ -286,9 +286,13 @@ func stateMachine() {
 				Display();
 
 			case <- eventStop:
-				// Not handled
+				
+				log.Warning("Pushed stop button. Button has no effect.");
+
 			case <- eventObstruction:
-				// Not handled
+
+				log.Warning("Pushed obstruction button. Button has no effect.");
+
 			case button := <- eventButtonFloorPressed:
 
 				handleEventButtonPressed(button);
