@@ -20,7 +20,7 @@ func Exists() bool {
 	return false;
 }
 
-func AllreadyStored(order Order) bool {
+func AlreadyStored(order Order) bool {
 	
 	for orderIndex := range orders {
 		if orders[orderIndex].Type == order.Type  && orders[orderIndex].Floor == order.Floor {
