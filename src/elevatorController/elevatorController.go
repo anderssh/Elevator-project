@@ -1,23 +1,24 @@
 package elevatorController
 
-import (
+import(
 	. "../typeDefinitions"
 	"../elevator"
 	"../log"
 	"../orders"
 	"time"
-)
+	"fmt"
+);
 
 //-----------------------------------------------//
 
 type State int
 
 const (
-	STATE_STARTUP   State = iota
-	STATE_IDLE      State = iota
-	STATE_MOVING    State = iota
-	STATE_DOOR_OPEN State = iota
-)
+	STATE_STARTUP   	State = iota
+	STATE_IDLE      	State = iota
+	STATE_MOVING    	State = iota
+	STATE_DOOR_OPEN 	State = iota
+);
 
 //-----------------------------------------------//
 
@@ -33,6 +34,89 @@ var eventButtonFloorPressed chan ButtonFloor 	= make(chan ButtonFloor)
 var eventNewOrder 			chan Order;
 
 var orderHandler 			chan Order;
+
+//-----------------------------------------------//
+
+func Display() {
+	
+	//-----------------------------------------------//
+	// Title with state
+
+	fmt.Print("ELEVATOR: ");
+
+	switch currentState {
+		case STATE_STARTUP:
+			fmt.Println(" (STATE_STARTUP) ");
+		case STATE_IDLE:
+			fmt.Println(" (STATE_IDLE) ");
+		case STATE_MOVING:
+			fmt.Println(" (STATE_MOVING) ");
+		case STATE_DOOR_OPEN:
+			fmt.Println(" (STATE_DOOR_OPEN) ");
+	}
+
+	//-----------------------------------------------//
+
+	for floor := 4; floor >= 1; floor-- {
+
+		//-----------------------------------------------//
+		// Elevator position
+
+		fmt.Print(floor);
+		fmt.Print("|"); // Left wall
+
+		if floorLastVisited == floor {
+			fmt.Print("\x1b[33;1m");
+			fmt.Print("+++");
+			fmt.Print("\x1b[0m");
+		} else {
+			fmt.Print("   ");
+		}
+
+		fmt.Print("|"); // Right wall
+
+		if currentState == STATE_DOOR_OPEN && floorLastVisited == floor {
+			fmt.Print("->");
+		} else {
+			fmt.Print("  ");
+		}
+
+		//-----------------------------------------------//
+		// Order display
+
+		fmt.Print("\t");
+
+		if orders.AllreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
+			fmt.Print("\x1b[31;1m");
+			fmt.Print("O");
+			fmt.Print("\x1b[0m");
+		} else {
+			fmt.Print("O");
+		}
+
+		fmt.Print(" ");
+
+		if orders.AllreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
+			fmt.Print("\x1b[31;1m");
+			fmt.Print("^");
+			fmt.Print("\x1b[0m");
+		} else {
+			fmt.Print("^");
+		}
+
+		fmt.Print(" ");
+
+		if orders.AllreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
+			fmt.Print("\x1b[31;1m");
+			fmt.Print("_");
+			fmt.Print("\x1b[0m");
+		} else {
+			fmt.Print("_");
+		}
+
+		fmt.Print("\n");
+	}
+}
 
 //-----------------------------------------------//
 
@@ -77,15 +161,15 @@ func handleEventCloseDoor() {
 	switch currentState {
 		case STATE_STARTUP:
 
-			// Nothing
+			log.Warning("Closed door in state startup");
 
 		case STATE_IDLE:
 
-			// Nothing
+			log.Warning("Closed door in state idle");
 
 		case STATE_MOVING:
 
-			// Nothing
+			log.Warning("Closed door in state moving");
 
 		case STATE_DOOR_OPEN:
 
@@ -159,16 +243,16 @@ func handleEventNewOrder(order Order) {
 					
 					currentState = STATE_DOOR_OPEN;
 					time.AfterFunc(time.Second*3, func() { // Close the door
-						eventCloseDoor <- true
+						eventCloseDoor <- true;
 					});
 
 				} else if floorDestination < floorLastVisited {
 					elevator.DriveInDirection(elevator.DIRECTION_DOWN);
+					currentState = STATE_MOVING;
 				} else {
 					elevator.DriveInDirection(elevator.DIRECTION_UP);
+					currentState = STATE_MOVING;
 				}
-
-				currentState = STATE_MOVING;
 			}
 
 		case STATE_MOVING:
@@ -192,17 +276,28 @@ func stateMachine() {
 	for {
 		select {
 			case floorReached := <- eventReachedNewFloor:
+
 				handleEventReachedNewFloor(floorReached);
+				Display();
+
 			case <- eventCloseDoor:
+
 				handleEventCloseDoor();
+				Display();
+
 			case <- eventStop:
 				// Not handled
 			case <- eventObstruction:
 				// Not handled
 			case button := <- eventButtonFloorPressed:
+
 				handleEventButtonPressed(button);
+				Display();
+
 			case order := <- eventNewOrder:
+
 				handleEventNewOrder(order);
+				Display();
 		}
 	}
 }
