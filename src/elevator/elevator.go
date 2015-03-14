@@ -100,7 +100,7 @@ func Initialize() *ErrorElevator {
 
 //-----------------------------------------------//
 
-func setFloorIndicatorLight(floorReached int){
+func setLightFloorIndicator(floorReached int) {
 
 	bit_1 :=  (floorReached - 1) 		% 2;
 	bit_2 := ((floorReached - 1) >> 1)  % 2;
@@ -118,12 +118,19 @@ func setFloorIndicatorLight(floorReached int){
 	}	
 }
 
+func TurnOnLightDoorOpen() {
+	io.SetBit(io.LIGHT_DOOR_OPEN)
+}
+
+func TurnOffLightDoorOpen() {
+	io.ClearBit(io.LIGHT_DOOR_OPEN)
+}
 //-----------------------------------------------//
 
 func SetPreviouslyReachedFloor(floorReached int){
 	
 	previouslyReachedFloor = floorReached;
-	setFloorIndicatorLight(floorReached);
+	setLightFloorIndicator(floorReached);
 
 }
 

@@ -137,9 +137,9 @@ func handleEventReachedNewFloor(floorReached int) {
 
 			if floorDestination == floorReached {
 
-				elevator.Stop()
+				elevator.Stop();
 				currentState = STATE_DOOR_OPEN
-
+				elevator.TurnOnLightDoorOpen();
 				time.AfterFunc(time.Second*3, func() { // Close the door
 					eventCloseDoor <- true
 				});
@@ -171,7 +171,7 @@ func handleEventCloseDoor() {
 			log.Warning("Closed door in state moving");
 
 		case STATE_DOOR_OPEN:
-
+			elevator.TurnOffLightDoorOpen();
 			orders.RemoveTop();
 
 			if orders.Exists() {
@@ -241,6 +241,7 @@ func handleEventNewOrder(order Order) {
 				if (floorDestination == elevator.GetPreviouslyReachedFloor()) {
 					
 					currentState = STATE_DOOR_OPEN;
+					elevator.TurnOnLightDoorOpen();
 					time.AfterFunc(time.Second*3, func() { // Close the door
 						eventCloseDoor <- true;
 					});
