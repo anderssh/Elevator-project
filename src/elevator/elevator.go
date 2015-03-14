@@ -104,11 +104,6 @@ func setFloorIndicatorLight(floorReached int){
 
 	bit_1 :=  (floorReached - 1) 		% 2;
 	bit_2 := ((floorReached - 1) >> 1)  % 2;
-	
-	log.Data("..")
-	log.Data(floorReached)
-	log.Data(bit_1)
-	log.Data(bit_2)
 
 	if bit_2 == 1 {
 		io.SetBit(io.LIGHT_FLOOR_INDICATOR1)
