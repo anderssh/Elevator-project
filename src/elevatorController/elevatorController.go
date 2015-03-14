@@ -43,12 +43,12 @@ func handleEventReachedNewFloor(floorReached int) {
 
 			elevator.Stop()
 
-			floorLastVisited 	= floorReached
-			currentState 		= STATE_IDLE
+			floorLastVisited 	= floorReached;
+			currentState 		= STATE_IDLE;
 
 		case STATE_IDLE:
 
-			floorLastVisited 	= floorReached
+			floorLastVisited 	= floorReached;
 
 		case STATE_MOVING:
 
@@ -62,11 +62,11 @@ func handleEventReachedNewFloor(floorReached int) {
 				});
 			}
 
-			floorLastVisited = floorReached
+			floorLastVisited = floorReached;
 
 		case STATE_DOOR_OPEN:
 
-			floorLastVisited = floorReached
+			floorLastVisited = floorReached;
 	}
 }
 
