@@ -3,6 +3,13 @@ package orders;
 import(
 	. "../typeDefinitions"
 	"../log"
+	"math"
+);
+
+//-----------------------------------------------//
+
+const(
+	COST_FOR_STOP float64 = 2
 );
 
 //-----------------------------------------------//
@@ -168,15 +175,15 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 
 	index := GetIndexInQueue(order, elevatorLastFloorVisited, isElevatorMoving, elevatorDirection);
 	
-	if index >= len(orders) {
+	if index == 0 {
 
-		log.Data("Add order last");
-		orders = append(orders, order);
-		
-	} else if index == 0 {
-		
 		log.Data("Add order first");
 		orders = append([]Order{ order }, orders ... );
+		
+	} else if index >= len(orders) {
+		
+		log.Data("Add order last");
+		orders = append(orders, order);
 
 	} else {
 		
@@ -191,6 +198,42 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 			orders[orderIndex] 		= orders[orderIndex - 1];
 			orders[orderIndex - 1] 	= tempOrder;
 		}
+	}
+}
+
+//-----------------------------------------------//
+
+func GetCostOf(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) float64 {
+	
+	index := GetIndexInQueue(order, elevatorLastFloorVisited, isElevatorMoving, elevatorDirection);
+
+	if index == 0 {
+
+		return math.Abs(float64(order.Floor - elevatorLastFloorVisited));
+	
+	} else {
+
+		cost := 0.0;
+
+		// First move
+		if orders[0].Floor != elevatorLastFloorVisited {
+			cost = math.Abs(float64(orders[0].Floor - elevatorLastFloorVisited));
+			cost = cost + COST_FOR_STOP;
+		}
+
+		// Between orders
+		for orderIndex := 1; orderIndex <= index - 1; orderIndex++ {
+
+			if orders[orderIndex].Floor != orders[orderIndex - 1].Floor {
+				cost = cost + math.Abs(float64(orders[orderIndex].Floor - orders[orderIndex - 1].Floor)); 	// Distance to travel
+				cost = cost + COST_FOR_STOP;
+			}
+		}
+
+		// Last step
+		cost = cost + math.Abs(float64(order.Floor - orders[index - 1].Floor));
+
+		return cost;
 	}
 }
 
