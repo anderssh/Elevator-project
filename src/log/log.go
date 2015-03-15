@@ -21,29 +21,47 @@ func SetLogLevel(newLogLevel int) {
 
 //-----------------------------------------------//
 
-func Error(value interface{}) {
+func Error(values ... interface{}) {
 	
 	if logLevel >= LOG_ERROR {
-		fmt.Print("\x1b[31;1m");
+		
+		fmt.Print("\x1b[31;1m");	// Set color to red
 		fmt.Print("Error: ");
-		fmt.Print(value);
-		fmt.Println("\x1b[0m");
+
+		for _, value := range values {
+			fmt.Print(value);
+			fmt.Print(" ");
+		}
+
+		fmt.Println("\x1b[0m");  	// Reset color
 	}
 }
 
-func Warning(value interface{}) {
+func Warning(values ... interface{}) {
 	
 	if logLevel >= LOG_WARNING {
-		fmt.Print("\x1b[33;1m");
+	
+		fmt.Print("\x1b[33;1m");	// Set color to yellow
 		fmt.Print("Warning: ");
-		fmt.Print(value);
-		fmt.Println("\x1b[0m");
+
+		for _, value := range values {
+			fmt.Print(value);
+			fmt.Print(" ");
+		}
+		
+		fmt.Println("\x1b[0m");  	// Reset color
 	}
 }
 
-func Data(value interface{}) {
+func Data(values ... interface{}) {
 
 	if logLevel >= LOG_ALL {
-		fmt.Println(value);
+
+		for _, value := range values {
+			fmt.Print(value);
+			fmt.Print(" ");
+		}
+
+		fmt.Println("");
 	}
 }
