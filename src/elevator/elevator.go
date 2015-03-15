@@ -77,7 +77,7 @@ func initializeContainerButtonFloor() {
 	containerButtonFloor[0][3] = ButtonFloor{};
 	
 	containerButtonFloor[1][0] = ButtonFloor{};
-	containerButtonFloor[1][1] = ButtonFloor{BUTTON_CALL_DOWN, 	1, false, false, io.BUTTON_DOWN0, io.LIGHT_DOWN1};
+	containerButtonFloor[1][1] = ButtonFloor{BUTTON_CALL_DOWN, 	1, false, false, io.BUTTON_DOWN1, io.LIGHT_DOWN1};
 	containerButtonFloor[1][2] = ButtonFloor{BUTTON_CALL_DOWN, 	2, false, false, io.BUTTON_DOWN2, io.LIGHT_DOWN2};
 	containerButtonFloor[1][3] = ButtonFloor{BUTTON_CALL_DOWN, 	3, false, false, io.BUTTON_DOWN3, io.LIGHT_DOWN3};
 	
@@ -94,7 +94,6 @@ func initializeSimpleButtons() {
 }
 
 func Initialize() *ErrorElevator {
-
 	err := io.Initialize();
 
 	if err != nil {
@@ -136,6 +135,18 @@ func TurnOffLightDoorOpen() {
 	io.ClearBit(io.LIGHT_DOOR_OPEN)
 }
 
+func TurnOnLightButtonFromOrder(order Order) {
+	if order.Type == ORDER_UP{
+		io.SetBit(containerButtonFloor[0][order.Floor].BusChannelLight)
+	}
+	if order.Type == ORDER_DOWN{
+		io.SetBit(containerButtonFloor[1][order.Floor].BusChannelLight)
+	}
+	if order.Type == ORDER_INSIDE{
+		io.SetBit(containerButtonFloor[2][order.Floor].BusChannelLight)
+	}
+
+}
 //-----------------------------------------------//
 
 func SetLastReachedFloor(floorReached int) {

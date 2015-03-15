@@ -239,6 +239,7 @@ func handleEventNewOrder(order Order) {
 
 			if !orders.AlreadyStored(order) {
 				orders.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+				elevator.TurnOnLightButtonFromOrder(order);
 
 			}
 
@@ -267,6 +268,7 @@ func handleEventNewOrder(order Order) {
 
 			if !orders.AlreadyStored(order) {
 				orders.Add(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
+				elevator.TurnOnLightButtonFromOrder(order);
 				floorDestination = orders.GetDestination();
 			}
 
@@ -274,6 +276,7 @@ func handleEventNewOrder(order Order) {
 
 			if !orders.AlreadyStored(order) {
 				orders.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+				elevator.TurnOnLightButtonFromOrder(order);
 				floorDestination = orders.GetDestination();
 			}
 	}
