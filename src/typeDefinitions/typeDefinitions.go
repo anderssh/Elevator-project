@@ -28,7 +28,7 @@ type ButtonFloor struct {
 	Pressed				bool
 	Light				bool
 	BusChannelPressed 	int
-	BusChannelLight	int
+	BusChannelLight		int
 }
 
 type ButtonSimple struct {
