@@ -7,20 +7,36 @@ import(
 
 //-----------------------------------------------//
 
-var orderHandler 	chan Order = make(chan Order);
-var eventNewOrder 	chan Order = make(chan Order);
+var elevatorOrderReceiver 	chan Order = make(chan Order);
+var elevatorEventNewOrder 	chan Order = make(chan Order);
+
+//-----------------------------------------------//
+
+func handleNewOrder(order Order) {
+	
+	if order.Type == ORDER_INSIDE { 			// Should only be dealt with locally
+
+		elevatorEventNewOrder <- order;
+	
+	} else {
+
+		//Send to master
+		elevatorEventNewOrder <- order;
+
+	}
+}
 
 //-----------------------------------------------//
 
 func Run() {
 
-	elevatorController.Initialize(orderHandler, eventNewOrder);
+	elevatorController.Initialize(elevatorOrderReceiver, elevatorEventNewOrder);
 	elevatorController.Run();
 
 	for {
 		select {
-			case order := <- orderHandler:
-				eventNewOrder <- order;
+			case order := <- elevatorOrderReceiver:
+				handleNewOrder(order);
 		}
 	}
 }
