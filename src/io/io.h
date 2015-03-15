@@ -6,7 +6,11 @@
 #ifndef __INCLUDE_IO_H__
 #define __INCLUDE_IO_H__
 
-
+#define PORT4               3
+#define PORT1               2
+#define PORT3               3
+#define PORT2               3
+#define PORT0               1
 
 /**
   Initialize libComedi in "Sanntidssalen"
