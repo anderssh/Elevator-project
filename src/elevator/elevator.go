@@ -26,7 +26,7 @@ func (err *ErrorElevator) Error() string {
 //-----------------------------------------------//
 
 var numberOfFloors 			int 	= 4;
-var previouslyReachedFloor 	int 	= -1;
+var lastReachedFloor 		int 	= -1;
 
 var buttonStop 			ButtonSimple
 var buttonObstruction 	ButtonSimple
@@ -103,7 +103,10 @@ func Initialize() *ErrorElevator {
 
 	initializeContainerButtonFloor();
 	initializeSimpleButtons();
-
+	for floor := 0; floor < NUMBER_OF_FLOORS ; floor++ {
+	
+		TurnOffAllLightButtonsOnFloor(floor)
+	}
 	return nil;
 }
 
@@ -136,53 +139,68 @@ func TurnOffLightDoorOpen() {
 }
 
 func TurnOnLightButtonFromOrder(order Order) {
+
 	if order.Type == ORDER_UP{
 		io.SetBit(containerButtonFloor[0][order.Floor].BusChannelLight)
-	}
-	if order.Type == ORDER_DOWN{
+	} else if order.Type == ORDER_DOWN{
 		io.SetBit(containerButtonFloor[1][order.Floor].BusChannelLight)
-	}
-	if order.Type == ORDER_INSIDE{
+	} else if order.Type == ORDER_INSIDE{
 		io.SetBit(containerButtonFloor[2][order.Floor].BusChannelLight)
 	}
+}
 
+func TurnOffLightButtonFromOrder(order Order) {
+
+	if order.Type == ORDER_UP{
+		io.ClearBit(containerButtonFloor[0][order.Floor].BusChannelLight)
+	} else if order.Type == ORDER_DOWN{
+		io.ClearBit(containerButtonFloor[1][order.Floor].BusChannelLight)
+	} else if order.Type == ORDER_INSIDE{
+		io.ClearBit(containerButtonFloor[2][order.Floor].BusChannelLight)
+	}
+}
+
+func TurnOffAllLightButtonsOnFloor(floor int) {
+	io.ClearBit(containerButtonFloor[0][floor].BusChannelLight)
+	io.ClearBit(containerButtonFloor[1][floor].BusChannelLight)
+	io.ClearBit(containerButtonFloor[2][floor].BusChannelLight)
 }
 //-----------------------------------------------//
 
 func SetLastReachedFloor(floorReached int) {
 	
-	previouslyReachedFloor = floorReached;
+	lastReachedFloor = floorReached;
 	switchLightFloorIndicator(floorReached);
 
 }
 
 func GetLastReachedFloor() int {
-	return previouslyReachedFloor;
+	return lastReachedFloor;
 }
 
 func registerEventReachedFloor(eventReachedNewFloor chan int) {
 
 	if io.IsBitSet(io.SENSOR_FLOOR0) {
 
-		if previouslyReachedFloor != 0{
+		if lastReachedFloor != 0{
 			eventReachedNewFloor  <- 0;
 		}
 
 	} else if io.IsBitSet(io.SENSOR_FLOOR1) {
 	
-		if previouslyReachedFloor != 1 {
+		if lastReachedFloor != 1 {
 			eventReachedNewFloor  <- 1;
 		}
 
 	} else if io.IsBitSet(io.SENSOR_FLOOR2) {
 
-		if previouslyReachedFloor != 2 {
+		if lastReachedFloor != 2 {
 			eventReachedNewFloor  <- 2;
 		}
 
 	} else if io.IsBitSet(io.SENSOR_FLOOR3) {
 		
-		if previouslyReachedFloor != 3 {
+		if lastReachedFloor != 3 {
 			eventReachedNewFloor  <- 3;
 		}
 	}

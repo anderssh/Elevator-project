@@ -173,7 +173,9 @@ func handleEventCloseDoor() {
 		case STATE_DOOR_OPEN:
 
 			elevator.TurnOffLightDoorOpen();
+
 			orders.RemoveOnFloor(elevator.GetLastReachedFloor());
+			elevator.TurnOffAllLightButtonsOnFloor(elevator.GetLastReachedFloor());
 
 			if orders.Exists() {
 
