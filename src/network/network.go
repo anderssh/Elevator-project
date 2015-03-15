@@ -3,50 +3,73 @@ package network;
 import(
 	"net"
 	"strconv"
+	"time"
+	"../log"
 );
 
-//----------------------------------------
-// Private:
+//-----------------------------------------------//
 
-func listen(listenConnection *net.UDPConn, listenChannel chan Message) {
+type NetworkMessage struct {
+	Length 			int;
+	Data 			string;
+	RemoteAddress 	*net.UDPAddr;
+}
+
+//-----------------------------------------------//
+
+func GetNewAddress(IPAddress string, port int) *net.UDPAddr {
+	addr, _ := net.ResolveUDPAddr("udp", IPAddress + ":" + strconv.Itoa(port));
+
+	return addr;
+}
+
+//-----------------------------------------------//
+
+func Listen(listenAddress *net.UDPAddr, listenChannel chan string) {
+
 	
+
+}
+
+func ListenWithDeadline(listenAddress *net.UDPAddr, listenChannel chan string, deadlineDuration time.Duration) error {
+	
+	listenConnection, _ := net.ListenUDP("udp", listenAddress);
+	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
+
 	messageBuffer := make([]byte, 1024);
 
 	for {
-		messageLength, remoteAddress, _ := listenConnection.ReadFromUDP(messageBuffer);
-		message := Message{Length : messageLength, Data : string(messageBuffer[0:messageLength]), RemoteAddress : remoteAddress };
+		messageLength, _, err := listenConnection.ReadFromUDP(messageBuffer);
 
-		listenChannel <- message;
+		if err != nil {
+
+			log.Error(err);
+			return err;
+
+		} else {
+
+			listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
+			listenChannel <- string(messageBuffer[0:messageLength]);
+		}
 	}
 }
 
-func send(sendChannel chan Message) {
+//-----------------------------------------------//
+
+func Send(sendAddress *net.UDPAddr, sendChannel chan string) {
 	
 	for {
-		message := <- sendChannel;
+		select {
+			case message := <- sendChannel:
 
-		sendConnection, _ := net.DialUDP("udp", nil, message.RemoteAddress);
-		sendConnection.Write([]byte(message.Data));
+				sendConnection, _ := net.DialUDP("udp", nil, sendAddress);
+				sendConnection.Write([]byte(message));
+		}
 	}
 }
 
 //----------------------------------------
-// Public:
 
-type Message struct {
-	Length int;
-	Data string;
-	RemoteAddress *net.UDPAddr;
-}
-
-func Initialize(listenPort int, listenChannel chan Message, sendChannel chan Message) {
-	
-	listenAddress, _ := net.ResolveUDPAddr("udp", ":" + strconv.Itoa(listenPort));
-	listenConnection, _ := net.ListenUDP("udp", listenAddress);
-
-	go listen(listenConnection, listenChannel);
-	go send(sendChannel);
-}
 
 /*
 func listen(conn *net.UDPConn) {
