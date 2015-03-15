@@ -287,12 +287,12 @@ func stateMachine() {
 			case floorReached := <- eventReachedNewFloor:
 
 				handleEventReachedNewFloor(floorReached);
-				Display();
+				//Display();
 
 			case <- eventCloseDoor:
 
 				handleEventCloseDoor();
-				Display();
+				//Display();
 
 			case <- eventStop:
 				
@@ -305,12 +305,12 @@ func stateMachine() {
 			case button := <- eventButtonFloorPressed:
 
 				handleEventButtonPressed(button);
-				Display();
+				//Display();
 
 			case order := <- eventNewOrder:
 
 				handleEventNewOrder(order);
-				Display();
+				//Display();
 		}
 	}
 }

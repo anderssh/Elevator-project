@@ -114,12 +114,11 @@ func shouldOrderBeBetween(order Order, floorStart int, floorEnd int) bool {
 	return false;
 }
 
-func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) {
+func GetIndexInQueue(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) int {
 
 	// Empty list
 	if len(orders) < 1 {
-		log.Data("Add order in empty queue")
-		orders = append(orders, order);
+		return 0;
 
 	//-----------------------------------------------//
 
@@ -128,7 +127,7 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 		// Check if we should set it in first
 		startFloor := elevatorLastFloorVisited;
 
-		if isElevatorMoving { // If we have left the lastVisitedFLoor
+		if isElevatorMoving { // If we have left the elevatorLastFloorVisited
 
 			if elevatorDirection == DIRECTION_UP && startFloor < 4 {
 				
@@ -141,9 +140,7 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 		}
 
 		if shouldOrderBeBetween(order, startFloor, orders[0].Floor) {
-			log.Data("Add order first");
-			orders = append([]Order{ order }, orders ... ); // Prepend
-			return;
+			return 0;
 		}
 
 		// Check if it should be in between any orders currently taken
@@ -155,16 +152,45 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 				floorEnd   := orders[orderIndex + 1].Floor;
 
 				if shouldOrderBeBetween(order, floorStart, floorEnd) {
-					log.Data("Add order between");
-					orders = append(append(orders[:orderIndex + 1], order), orders[orderIndex + 1:] ... );
-					return;
+					return orderIndex + 1;
 				}
 			}	
 		}
 
 		// Not found, thus it must be last
+		return len(orders);
+	}
+}
+
+//-----------------------------------------------//
+
+func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) {
+
+	index := GetIndexInQueue(order, elevatorLastFloorVisited, isElevatorMoving, elevatorDirection);
+	
+	if index >= len(orders) {
+
 		log.Data("Add order last");
 		orders = append(orders, order);
+		
+	} else if index == 0 {
+		
+		log.Data("Add order first");
+		orders = append([]Order{ order }, orders ... );
+
+	} else {
+		
+		log.Data("Add order in the middle somewhere at ", index);
+		orders = append(orders, order);
+
+		// Bubble order down
+		for orderIndex := (len(orders) - 1); orderIndex > index; orderIndex-- {
+			
+			tempOrder := orders[orderIndex];
+
+			orders[orderIndex] 		= orders[orderIndex - 1];
+			orders[orderIndex - 1] 	= tempOrder;
+		}
 	}
 }
 
