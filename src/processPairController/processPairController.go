@@ -21,13 +21,13 @@ func backupProcess() {
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
+	aliveRecipient := network.Recipient{ Name : "alive", Channel : make(chan string) };
+	dataRecipient  := network.Recipient{ Name : "data", Channel : make(chan string) };
+
 	timeoutTriggerTime 	:= time.Millisecond * ALIVE_MESSAGE_DEADLINE;
 	timeoutNotifier 	:= make(chan bool);
 
-	go network.ListenServerWithTimeout("localhost", 9871, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
-
-	aliveRecipient := network.Recipient{ Name : "alive", Channel : make(chan string) };
-	dataRecipient  := network.Recipient{ Name : "data", Channel : make(chan string) };
+	go network.ListenServerWithTimeout("localhost", 10005, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
 
 	addServerRecipientChannel <- aliveRecipient;
 	addServerRecipientChannel <- dataRecipient;
@@ -52,13 +52,13 @@ func backupProcess() {
 
 func masterProcessAliveNotification() {
 	
-	aliveNotificationTransmitter := make(chan network.Message);
+	aliveTransmitChannel := make(chan network.Message);
 
-	go network.TransmitServer("localhost", 9871, aliveNotificationTransmitter);
+	go network.TransmitServer("localhost", 10005, aliveTransmitChannel);
 
 	for {
 		time.Sleep(time.Millisecond * ALIVE_NOTIFICATION_DELAY);
-		aliveNotificationTransmitter <- network.Message{ Recipient : "alive", Data : "Alive" };
+		aliveTransmitChannel <- network.Message{ Recipient : "alive", Data : "Alive" };
 	}
 }
 

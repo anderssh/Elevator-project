@@ -22,6 +22,65 @@ type Recipient struct {
 
 //-----------------------------------------------//
 
+func listen(IPAddr string, port int, messageChannel chan<- Message) {
+
+	listenAddress, _ := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
+
+	listenConnection, _ := net.ListenUDP("udp", listenAddress);
+
+	defer func() {
+		if errRecovered := recover(); errRecovered != nil {
+			listenConnection.Close();
+		}
+	}();
+
+	messageBuffer := make([]byte, 1024);
+
+	for {
+		messageLength, _, err := listenConnection.ReadFromUDP(messageBuffer);
+	
+		if err != nil {
+
+			panic(err);
+
+		} else {
+
+			var decodedMessage Message;
+			originalMessage := messageBuffer[0:messageLength];
+			JSON.Decode(originalMessage, &decodedMessage);
+
+			messageChannel <- decodedMessage;
+		}
+	}
+}
+
+func ListenServer(IPAddr string, port int, addRecipientChannel chan Recipient) {
+
+	recipients 		:= make([]Recipient, 1);
+	messageChannel 	:= make(chan Message);
+
+	go listen(IPAddr, port, messageChannel);
+
+	for {
+		select {
+			case message := <- messageChannel:
+				
+				for recipientIndex := range recipients {
+					if message.Recipient == recipients[recipientIndex].Name {
+						recipients[recipientIndex].Channel <- message.Data;
+						break;
+					}
+				}
+
+			case newRecipient := <- addRecipientChannel:
+				
+				recipients = append(recipients, newRecipient);
+		}
+	}
+}
+
+//-----------------------------------------------//
+
 func listenWithTimeout(IPAddr string, port int, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
 	listenAddress, _ := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
