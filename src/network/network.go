@@ -5,100 +5,105 @@ import(
 	"strconv"
 	"time"
 	"../log"
+	"../encoder/JSON"
 );
 
 //-----------------------------------------------//
 
-type NetworkMessage struct {
-	Length 			int;
-	Data 			string;
-	RemoteAddress 	*net.UDPAddr;
+type Message struct {
+	Recipient 	string;
+	Data 		string;
+}
+
+type Recipient struct {
+	Name 	string;
+	Channel chan string;
 }
 
 //-----------------------------------------------//
 
-func GetNewAddress(IPAddress string, port int) *net.UDPAddr {
-	addr, _ := net.ResolveUDPAddr("udp", IPAddress + ":" + strconv.Itoa(port));
+func listenWithTimeout(IPAddr string, port int, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
-	return addr;
-}
-
-//-----------------------------------------------//
-
-func Listen(listenAddress *net.UDPAddr, listenChannel chan string) {
-
-	
-
-}
-
-func ListenWithDeadline(listenAddress *net.UDPAddr, listenChannel chan string, deadlineDuration time.Duration) error {
+	listenAddress, _ := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
 	
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
 	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
+
+	defer func() {
+		if errRecovered := recover(); errRecovered != nil {
+			
+			if errNet, ok := errRecovered.(net.Error); ok && errNet.Timeout() {
+				log.Warning("Listen server with deadline timed out");
+			} else {
+				log.Error("Unknown listen server timeout");
+			}
+
+			listenConnection.Close();
+			timeoutNotifier <- true;
+		}
+	}();
 
 	messageBuffer := make([]byte, 1024);
 
 	for {
 		messageLength, _, err := listenConnection.ReadFromUDP(messageBuffer);
-
+	
 		if err != nil {
 
-			log.Error(err);
-			return err;
+			panic(err);
 
 		} else {
 
 			listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
-			listenChannel <- string(messageBuffer[0:messageLength]);
+
+			var decodedMessage Message;
+			originalMessage := messageBuffer[0:messageLength];
+			JSON.Decode(originalMessage, &decodedMessage);
+
+			messageChannel <- decodedMessage;
+		}
+	}
+}
+
+func ListenServerWithTimeout(IPAddr string, port int, addRecipientChannel chan Recipient, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
+
+	recipients 		:= make([]Recipient, 1);
+	messageChannel 	:= make(chan Message);
+
+	go listenWithTimeout(IPAddr, port, messageChannel, deadlineDuration, timeoutNotifier);
+
+	for {
+		select {
+			case message := <- messageChannel:
+				
+				for recipientIndex := range recipients {
+					if message.Recipient == recipients[recipientIndex].Name {
+						recipients[recipientIndex].Channel <- message.Data;
+						break;
+					}
+				}
+
+			case newRecipient := <- addRecipientChannel:
+				
+				recipients = append(recipients, newRecipient);
 		}
 	}
 }
 
 //-----------------------------------------------//
 
-func Send(sendAddress *net.UDPAddr, sendChannel chan string) {
+func TransmitServer(IPAddr string, port int, sendChannel chan Message) {
 	
+	transmitAddr, _ := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
+
 	for {
 		select {
 			case message := <- sendChannel:
 
-				sendConnection, _ := net.DialUDP("udp", nil, sendAddress);
-				sendConnection.Write([]byte(message));
+				encodedMessage, _ := JSON.Encode(message);
+
+				sendConnection, _ := net.DialUDP("udp", nil, transmitAddr);
+				sendConnection.Write(encodedMessage);
 		}
 	}
 }
-
-//----------------------------------------
-
-
-/*
-func listen(conn *net.UDPConn) {
-buffer := make([]byte, 1024);
-for {
-messageSize, _, _ := conn.ReadFromUDP(buffer);
-fmt.Println("listend: " + string(buffer[0:messageSize]));
-}
-}
-func transmit(conn *net.UDPConn) {
-for {
-time.Sleep(2000*time.Millisecond);
-message := "Hello server";
-conn.Write([]byte(message));
-fmt.Println("Sent: " + message);
-}
-}
-func main() {
-serverIP := "129.241.187.255";
-serverPort := 20016;
-serverAddr, _ := net.ResolveUDPAddr("udp", serverIP + ":" + strconv.Itoa(serverPort));
-listenPort := 20016;
-listenAddr, _ := net.ResolveUDPAddr("udp", ":" + strconv.Itoa(listenPort));
-fmt.Println(listenAddr);
-fmt.Println(serverAddr);
-listenConn, _ := net.ListenUDP("udp", listenAddr);
-transmitConn, _ := net.DialUDP("udp", nil, serverAddr);
-go listen(listenConn);
-go transmit(transmitConn);
-d_chan := make(chan bool, 1);
-<- d_chan;
-*/

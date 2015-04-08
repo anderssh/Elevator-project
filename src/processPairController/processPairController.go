@@ -6,54 +6,65 @@ import(
 	"../log"
 	"../network"
 	"time"
-	"../encoder/JSON"
 );
 
 //-----------------------------------------------//
 
 const(
-	ALIVE_MESSAGE_DEADLINE  		= 500
-	ALIVE_NOTIFICATION_DELAY  		= 25
+	ALIVE_MESSAGE_DEADLINE  		= 200
+	ALIVE_NOTIFICATION_DELAY  		= 15
 );
 
 //-----------------------------------------------//
 
-func backup() {
+func backupProcess() {
 
-	aliveReceiver := make(chan string);
-	dataReceiver  := make(chan string);
+	addServerRecipientChannel := make(chan network.Recipient);
 
-	go network.ListenWithDeadline(	network.GetNewAddress("localhost", 9871), aliveReceiver, time.Millisecond * ALIVE_MESSAGE_DEADLINE);
-	go network.Listen(				network.GetNewAddress("localhost", 9872), dataReceiver);
+	timeoutTriggerTime 	:= time.Millisecond * ALIVE_MESSAGE_DEADLINE;
+	timeoutNotifier 	:= make(chan bool);
 
+	go network.ListenServerWithTimeout("localhost", 9871, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
+
+	aliveRecipient := network.Recipient{ Name : "alive", Channel : make(chan string) };
+	dataRecipient  := network.Recipient{ Name : "data", Channel : make(chan string) };
+
+	addServerRecipientChannel <- aliveRecipient;
+	addServerRecipientChannel <- dataRecipient;
+
+	loop:
 	for {
 		select {
-			case aliveMessage := <- aliveReceiver:
+			case aliveMessage := <- aliveRecipient.Channel:
 				log.Data("Alive", aliveMessage);
-			case data 		  := <- dataReceiver:
-				log.Error("Got data", data);
+			case data 		  := <- dataRecipient.Channel:
+				log.Data("Got data", data);
+			case 			     <- timeoutNotifier:
+				log.Warning("Switching to master process");
+
+				go masterProcess();
+				break loop;
 		}
 	}
 }
 
 //-----------------------------------------------//
 
-func aliveNotification(aliveChannel chan string) {
+func masterProcessAliveNotification() {
 	
+	aliveNotificationTransmitter := make(chan network.Message);
+
+	go network.TransmitServer("localhost", 9871, aliveNotificationTransmitter);
+
 	for {
 		time.Sleep(time.Millisecond * ALIVE_NOTIFICATION_DELAY);
-		
-		message, _ := JSON.Encode("Alive");
-		aliveChannel <- string(message);
+		aliveNotificationTransmitter <- network.Message{ Recipient : "alive", Data : "Alive" };
 	}
 }
 
-func master() {
+func masterProcess() {
 
-	aliveChannel := make(chan string);
-	go network.Send(network.GetNewAddress("localhost", 9871), aliveChannel);
-	go aliveNotification(aliveChannel);
-
+	go masterProcessAliveNotification();
 	go systemController.Run();
 }
 
@@ -63,11 +74,11 @@ func Run() {
 
 	if len(os.Args) >= 2 && os.Args[1] == "backup" {
 
-		go backup();
+		go backupProcess();
 
 	} else {
 
-		go master();
+		go masterProcess();
 
 	}
 }
