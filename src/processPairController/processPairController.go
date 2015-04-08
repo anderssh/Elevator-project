@@ -2,7 +2,7 @@ package processPairController;
 
 import(
 	"os"
-	"../systemController"
+	"../elevatorController"
 	"../log"
 	"../network"
 	"time"
@@ -65,7 +65,7 @@ func masterProcessAliveNotification() {
 func masterProcess() {
 
 	go masterProcessAliveNotification();
-	go systemController.Run();
+	go elevatorController.Run();
 }
 
 //-----------------------------------------------//
