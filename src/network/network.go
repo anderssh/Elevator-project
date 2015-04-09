@@ -11,21 +11,20 @@ import(
 //-----------------------------------------------//
 
 type Message struct {
-	Recipient 	string;
-	Data 		string;
+	RecipientName 	string;
+	Data 			[]byte;
 }
 
 type Recipient struct {
-	Name 	string;
-	Channel chan string;
+	Name 			string;
+	Channel 		chan []byte;
 }
 
 //-----------------------------------------------//
 
 func listen(IPAddr string, port int, messageChannel chan<- Message) {
 
-	listenAddress, _ := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
-
+	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
 
 	defer func() {
@@ -40,7 +39,7 @@ func listen(IPAddr string, port int, messageChannel chan<- Message) {
 		messageLength, _, err := listenConnection.ReadFromUDP(messageBuffer);
 	
 		if err != nil {
-
+			
 			panic(err);
 
 		} else {
@@ -66,7 +65,7 @@ func ListenServer(IPAddr string, port int, addRecipientChannel chan Recipient) {
 			case message := <- messageChannel:
 				
 				for recipientIndex := range recipients {
-					if message.Recipient == recipients[recipientIndex].Name {
+					if message.RecipientName == recipients[recipientIndex].Name {
 						recipients[recipientIndex].Channel <- message.Data;
 						break;
 					}
@@ -83,9 +82,9 @@ func ListenServer(IPAddr string, port int, addRecipientChannel chan Recipient) {
 
 func listenWithTimeout(IPAddr string, port int, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
-	listenAddress, _ := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
-	
+	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
+	
 	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
 
 	defer func() {
@@ -136,7 +135,7 @@ func ListenServerWithTimeout(IPAddr string, port int, addRecipientChannel chan R
 			case message := <- messageChannel:
 				
 				for recipientIndex := range recipients {
-					if message.Recipient == recipients[recipientIndex].Name {
+					if message.RecipientName == recipients[recipientIndex].Name {
 						recipients[recipientIndex].Channel <- message.Data;
 						break;
 					}

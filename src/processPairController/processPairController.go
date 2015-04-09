@@ -6,6 +6,7 @@ import(
 	"../log"
 	"../network"
 	"time"
+	"../encoder/JSON"
 );
 
 //-----------------------------------------------//
@@ -21,24 +22,20 @@ func backupProcess() {
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
-	aliveRecipient := network.Recipient{ Name : "alive", Channel : make(chan string) };
-	dataRecipient  := network.Recipient{ Name : "data", Channel : make(chan string) };
+	aliveRecipient := network.Recipient{ Name : "alive", Channel : make(chan []byte) };
 
 	timeoutTriggerTime 	:= time.Millisecond * ALIVE_MESSAGE_DEADLINE;
 	timeoutNotifier 	:= make(chan bool);
 
-	go network.ListenServerWithTimeout("localhost", 10005, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
+	go network.ListenServerWithTimeout("localhost", 9132, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
 
 	addServerRecipientChannel <- aliveRecipient;
-	addServerRecipientChannel <- dataRecipient;
 
 	loop:
 	for {
 		select {
 			case aliveMessage := <- aliveRecipient.Channel:
 				log.Data("Alive", aliveMessage);
-			case data 		  := <- dataRecipient.Channel:
-				log.Data("Got data", data);
 			case 			     <- timeoutNotifier:
 				log.Warning("Switching to master process");
 
@@ -54,15 +51,18 @@ func masterProcessAliveNotification() {
 	
 	aliveTransmitChannel := make(chan network.Message);
 
-	go network.TransmitServer("localhost", 10005, aliveTransmitChannel);
+	go network.TransmitServer("localhost", 9132, aliveTransmitChannel);
 
 	for {
 		time.Sleep(time.Millisecond * ALIVE_NOTIFICATION_DELAY);
-		aliveTransmitChannel <- network.Message{ Recipient : "alive", Data : "Alive" };
+		aliveMessage, _ := JSON.Encode("Alive");
+		aliveTransmitChannel <- network.Message{ RecipientName : "alive", Data : aliveMessage };
 	}
 }
 
 func masterProcess() {
+
+	elevatorController.Initialize();
 
 	go masterProcessAliveNotification();
 	go elevatorController.Run();

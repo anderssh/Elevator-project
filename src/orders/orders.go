@@ -95,7 +95,7 @@ func shouldOrderBeBetween(order Order, floorStart int, floorEnd int) bool {
 			return true;
 		}
 
-	// In between is all that is need, not dependent on moving direction
+	// In between is all that is needed, not dependent on moving direction
 	} else if order.Type == ORDER_INSIDE {
 
 		if floorStart <= floorEnd {

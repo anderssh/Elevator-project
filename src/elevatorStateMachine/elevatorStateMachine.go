@@ -242,7 +242,6 @@ func handleEventNewOrder(order Order) {
 			if !orders.AlreadyStored(order) {
 				orders.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
-
 			}
 
 			if orders.Exists() {

@@ -239,14 +239,17 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 	for buttonTypeIndex := range containerButtonFloor {
 		for buttonFloorIndex := range containerButtonFloor[buttonTypeIndex] {
 
-			if !(buttonTypeIndex == 0 && buttonFloorIndex == 3) || (buttonTypeIndex == 1 && buttonFloorIndex == 0){
-				// Omitting the non-existing buttons
+			button := containerButtonFloor[buttonTypeIndex][buttonFloorIndex];
 
-				buttonPreviouslyPressed := containerButtonFloor[buttonTypeIndex][buttonFloorIndex].Pressed;
-				containerButtonFloor[buttonTypeIndex][buttonFloorIndex].Pressed = io.IsBitSet(containerButtonFloor[buttonTypeIndex][buttonFloorIndex].BusChannelPressed);
+			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.Floor == NUMBER_OF_FLOORS - 1) { 		// Omitting the non-existing buttons
 
-				if containerButtonFloor[buttonTypeIndex][buttonFloorIndex].Pressed && !buttonPreviouslyPressed {
-					eventButtonFloorPressed <- containerButtonFloor[buttonTypeIndex][buttonFloorIndex];
+				buttonPreviouslyPressed := button.Pressed;
+				button.Pressed 			 = io.IsBitSet(button.BusChannelPressed);
+
+				containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for go bug
+
+				if button.Pressed && !buttonPreviouslyPressed {
+					eventButtonFloorPressed <- button;
 				}
 			}
 		}
@@ -261,11 +264,11 @@ func RegisterEvents(eventReachedNewFloor 	chan int,
 					eventButtonFloorPressed chan ButtonFloor) {
 
 	for {
-		registerEventReachedFloor(eventReachedNewFloor)
-		registerEventStop(eventStop)
-		registerEventObstruction(eventObstruction)
-		registerEventButtonFloorPressed(eventButtonFloorPressed)
+		registerEventReachedFloor(eventReachedNewFloor);
+		registerEventStop(eventStop);
+		registerEventObstruction(eventObstruction);
+		registerEventButtonFloorPressed(eventButtonFloorPressed);
 
-		time.Sleep(time.Microsecond * 50)
+		time.Sleep(time.Microsecond * 50);
 	}
 }
