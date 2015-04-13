@@ -10,28 +10,10 @@ import(
 
 //-----------------------------------------------//
 
-type Message struct {
-	RecipientName 		string;
-	DestinationIPAddr 	string;
-	DestinationPort 	int;
-	
-	SenderIP			string;
-	SenderPort			int;
-	Data 				[]byte;
-}
-
-
-type Recipient struct {
-	Name 		string;
-	ChannelMessage 	chan Message;
-}
-
-//-----------------------------------------------//
-
 var IPAddress 	string;
 var port 		int;
-func initialize(){
 
+func initialize(){
 
     adresses, err := net.InterfaceAddrs()
 
@@ -52,14 +34,37 @@ func initialize(){
 
 //-----------------------------------------------//
 
+type Message struct {
+	RecipientName 		string;
+	
+	DestinationIPAddr 	string;
+	DestinationPort 	int;
+	
+	SenderIP			string;
+	SenderPort			int;
+	
+	Data 				[]byte;
+}
+
 func MakeMessage (recipientName string, data []byte, destinationIPAddr string, destinationPort int) Message {
+	
 	return 	Message{RecipientName : recipientName, 
 			DestinationIPAddr : destinationIPAddr, 
-			DestinationPort : destinationPort,
+			DestinationPort : port,
 			SenderIP : IPAddress,
 			SenderPort : port,
 	 		Data : data}
 }
+
+type Recipient struct {
+	Name 		string;
+	ChannelMessage 	chan Message;
+}
+
+//-----------------------------------------------//
+
+
+
 
 func listen(IPAddr string, port int, messageChannel chan<- Message) {
 
