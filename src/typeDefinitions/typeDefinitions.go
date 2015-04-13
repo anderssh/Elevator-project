@@ -1,5 +1,9 @@
 package typeDefinitions;
 
+import(
+	"../io"
+);
+
 //-----------------------------------------------//
 
 type Direction int
@@ -22,20 +26,60 @@ const(
 	BUTTON_OBSTRUCTION  ButtonType = iota
 );
 
+//-----------------------------------------------//
+
 type ButtonFloor struct {
-	Type       			ButtonType
-	Floor 				int
-	Pressed				bool
-	Light				bool
-	BusChannelPressed 	int
-	BusChannelLight		int
+	
+	Type       				ButtonType
+	Floor 					int
+	
+	IoRegisterPressed 		int
+	PressedReadingPrevious	bool
+	PressedReadingCurrent	bool
+	
+	IoRegisterLight			int
 }
 
+func (button *ButtonFloor) UpdateState() {
+
+	button.PressedReadingPrevious = button.PressedReadingCurrent;
+	button.PressedReadingCurrent = io.IsBitSet(button.IoRegisterPressed);
+}
+
+func (button *ButtonFloor) IsPressed() bool {
+	return button.PressedReadingCurrent && !button.PressedReadingPrevious;
+}
+
+func (button *ButtonFloor) TurnOffLight() {
+	io.ClearBit(button.IoRegisterLight);
+}
+
+func (button *ButtonFloor) TurnOnLight() {
+	io.SetBit(button.IoRegisterLight);
+}
+
+//-----------------------------------------------//
+
 type ButtonSimple struct {
-	Type       			ButtonType
-	Pressed    			bool
-	Light				bool
-	BusChannelPressed 	int
+	Type       				ButtonType
+	
+	IoRegisterPressed 		int
+	PressedReadingPrevious	bool
+	PressedReadingCurrent	bool
+}
+
+func (button *ButtonSimple) UpdateState() {
+
+	button.PressedReadingPrevious = button.PressedReadingCurrent;
+	button.PressedReadingCurrent = io.IsBitSet(button.IoRegisterPressed);
+}
+
+func (button *ButtonSimple) IsPressed() bool {
+	return (button.PressedReadingCurrent && !button.PressedReadingPrevious);
+}
+
+func (button *ButtonSimple) IsReleased() bool {
+	return (!button.PressedReadingCurrent && button.PressedReadingPrevious);
 }
 
 //-----------------------------------------------//

@@ -4,7 +4,9 @@ package io;
 #cgo LDFLAGS: -lcomedi -lm
 #include "io.h"
 */
-import "C";
+import(
+	"C"
+);
 
 //-----------------------------------------------//
 
@@ -85,17 +87,17 @@ func Initialize() *ErrorIO {
 
 //-----------------------------------------------//
 
-func SetBit(busChannel int){
-	C.io_set_bit(C.int(busChannel));	
+func SetBit(ioRegister int){
+	C.io_set_bit(C.int(ioRegister));	
 }
 
-func ClearBit(busChannel int){
-	C.io_clear_bit(C.int(busChannel));	
+func ClearBit(ioRegister int){
+	C.io_clear_bit(C.int(ioRegister));	
 }
 
-func IsBitSet(busChannel int) bool { 
+func IsBitSet(ioRegister int) bool { 
 
-	if int(C.io_read_bit(C.int(busChannel))) == 1 {
+	if int(C.io_read_bit(C.int(ioRegister))) == 1 {
 		return true;
 	}
 
@@ -104,10 +106,10 @@ func IsBitSet(busChannel int) bool {
 
 //-----------------------------------------------//
 
-func WriteAnalog(busChannel int, value int){
-	C.io_write_analog(C.int(busChannel), C.int(value));
+func WriteAnalog(ioRegister int, value int){
+	C.io_write_analog(C.int(ioRegister), C.int(value));
 }
 
-func ReadAnalog(busChannel int) int {
-	return int(C.io_read_analog(C.int(busChannel)));
+func ReadAnalog(ioRegister int) int {
+	return int(C.io_read_analog(C.int(ioRegister)));
 }

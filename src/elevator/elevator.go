@@ -25,7 +25,6 @@ func (err *ErrorElevator) Error() string {
 
 //-----------------------------------------------//
 
-var numberOfFloors 			int 	= 4;
 var lastReachedFloor 		int 	= -1;
 
 var buttonStop 			ButtonSimple
@@ -73,25 +72,26 @@ func initializeContainerButtonFloor() {
 		containerButtonFloor[i] = make([]ButtonFloor, NUMBER_OF_FLOORS);
 	}
 
-	containerButtonFloor[0][0] = ButtonFloor{BUTTON_CALL_UP, 		0, false, false, io.BUTTON_UP0, io.LIGHT_UP0};
-	containerButtonFloor[0][1] = ButtonFloor{BUTTON_CALL_UP, 		1, false, false, io.BUTTON_UP1, io.LIGHT_UP1};
-	containerButtonFloor[0][2] = ButtonFloor{BUTTON_CALL_UP, 		2, false, false, io.BUTTON_UP2, io.LIGHT_UP2};
-	containerButtonFloor[0][3] = ButtonFloor{};
+	containerButtonFloor[0][0] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 0, IoRegisterPressed : io.BUTTON_UP0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP0 };
+	containerButtonFloor[0][1] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 1, IoRegisterPressed : io.BUTTON_UP1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP1 };
+	containerButtonFloor[0][2] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 2, IoRegisterPressed : io.BUTTON_UP2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP2 };
+	containerButtonFloor[0][3] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 3 };
+
+	containerButtonFloor[1][0] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 0 };
+	containerButtonFloor[1][1] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 1, IoRegisterPressed : io.BUTTON_DOWN0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN0 };
+	containerButtonFloor[1][2] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 2, IoRegisterPressed : io.BUTTON_DOWN1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN1 };
+	containerButtonFloor[1][3] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 3, IoRegisterPressed : io.BUTTON_DOWN2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN2 };
 	
-	containerButtonFloor[1][0] = ButtonFloor{};
-	containerButtonFloor[1][1] = ButtonFloor{BUTTON_CALL_DOWN, 	1, false, false, io.BUTTON_DOWN1, io.LIGHT_DOWN1};
-	containerButtonFloor[1][2] = ButtonFloor{BUTTON_CALL_DOWN, 	2, false, false, io.BUTTON_DOWN2, io.LIGHT_DOWN2};
-	containerButtonFloor[1][3] = ButtonFloor{BUTTON_CALL_DOWN, 	3, false, false, io.BUTTON_DOWN3, io.LIGHT_DOWN3};
-	
-	containerButtonFloor[2][0] = ButtonFloor{BUTTON_CALL_INSIDE, 	0, false, false, io.BUTTON_CALL_INSIDE0, io.LIGHT_CALL_INSIDE0};
-	containerButtonFloor[2][1] = ButtonFloor{BUTTON_CALL_INSIDE, 	1, false, false, io.BUTTON_CALL_INSIDE1, io.LIGHT_CALL_INSIDE1};
-	containerButtonFloor[2][2] = ButtonFloor{BUTTON_CALL_INSIDE, 	2, false, false, io.BUTTON_CALL_INSIDE2, io.LIGHT_CALL_INSIDE2};
-	containerButtonFloor[2][3] = ButtonFloor{BUTTON_CALL_INSIDE, 	3, false, false, io.BUTTON_CALL_INSIDE3, io.LIGHT_CALL_INSIDE3};
+	containerButtonFloor[2][0] = ButtonFloor{ Type : BUTTON_CALL_INSIDE, Floor : 0, IoRegisterPressed : io.BUTTON_CALL_INSIDE0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_CALL_INSIDE0 };
+	containerButtonFloor[2][1] = ButtonFloor{ Type : BUTTON_CALL_INSIDE, Floor : 1, IoRegisterPressed : io.BUTTON_CALL_INSIDE1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_CALL_INSIDE1 };
+	containerButtonFloor[2][2] = ButtonFloor{ Type : BUTTON_CALL_INSIDE, Floor : 2, IoRegisterPressed : io.BUTTON_CALL_INSIDE2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_CALL_INSIDE2 };
+	containerButtonFloor[2][3] = ButtonFloor{ Type : BUTTON_CALL_INSIDE, Floor : 3, IoRegisterPressed : io.BUTTON_CALL_INSIDE3, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_CALL_INSIDE3 };
 }
+
 func initializeSimpleButtons() {
 
-	buttonStop 			= ButtonSimple{BUTTON_STOP, 		false, false, io.STOP};
-	buttonObstruction 	= ButtonSimple{BUTTON_OBSTRUCTION, 	false, false, io.OBSTRUCTION};
+	buttonStop 			= ButtonSimple{ Type : BUTTON_STOP, 		IoRegisterPressed : io.STOP, 		PressedReadingPrevious : false, PressedReadingCurrent : false };
+	buttonObstruction 	= ButtonSimple{ Type : BUTTON_OBSTRUCTION, 	IoRegisterPressed : io.OBSTRUCTION, PressedReadingPrevious : false, PressedReadingCurrent : false };
 }
 
 func Initialize() *ErrorElevator {
@@ -115,6 +115,47 @@ func Initialize() *ErrorElevator {
 
 //-----------------------------------------------//
 
+func TurnOnLightDoorOpen() {
+	io.SetBit(io.LIGHT_DOOR_OPEN);
+}
+
+func TurnOffLightDoorOpen() {
+	io.ClearBit(io.LIGHT_DOOR_OPEN);
+}
+
+//-----------------------------------------------//
+
+func TurnOnLightButtonFromOrder(order Order) {
+
+	if order.Type == ORDER_UP{
+		containerButtonFloor[0][order.Floor].TurnOnLight();
+	} else if order.Type == ORDER_DOWN{
+		containerButtonFloor[1][order.Floor].TurnOnLight();
+	} else if order.Type == ORDER_INSIDE{
+		containerButtonFloor[2][order.Floor].TurnOnLight();
+	}
+}
+
+func TurnOffLightButtonFromOrder(order Order) {
+
+	if order.Type == ORDER_UP{
+		containerButtonFloor[0][order.Floor].TurnOffLight();
+	} else if order.Type == ORDER_DOWN{
+		containerButtonFloor[1][order.Floor].TurnOffLight();
+	} else if order.Type == ORDER_INSIDE{
+		containerButtonFloor[2][order.Floor].TurnOffLight();
+	}
+}
+
+func TurnOffAllLightButtonsOnFloor(floor int) {
+
+	containerButtonFloor[0][floor].TurnOffLight();
+	containerButtonFloor[1][floor].TurnOffLight();
+	containerButtonFloor[2][floor].TurnOffLight();
+}
+
+//-----------------------------------------------//
+
 func switchLightFloorIndicator(floorReached int) {
 
 	// 00: Floor 0
@@ -126,54 +167,17 @@ func switchLightFloorIndicator(floorReached int) {
 	bit_2 := ((floorReached) >> 1)  % 2;
 
 	if bit_2 == 1 {
-		io.SetBit(io.LIGHT_FLOOR_INDICATOR1)
+		io.SetBit(io.LIGHT_FLOOR_INDICATOR1);
 	} else {
-		io.ClearBit(io.LIGHT_FLOOR_INDICATOR1)
+		io.ClearBit(io.LIGHT_FLOOR_INDICATOR1);
 	}
 
 	if bit_1 == 1 {
-		io.SetBit(io.LIGHT_FLOOR_INDICATOR2)
+		io.SetBit(io.LIGHT_FLOOR_INDICATOR2);
 	} else {
-		io.ClearBit(io.LIGHT_FLOOR_INDICATOR2)
+		io.ClearBit(io.LIGHT_FLOOR_INDICATOR2);
 	}
 }
-
-func TurnOnLightDoorOpen() {
-	io.SetBit(io.LIGHT_DOOR_OPEN)
-}
-
-func TurnOffLightDoorOpen() {
-	io.ClearBit(io.LIGHT_DOOR_OPEN)
-}
-
-func TurnOnLightButtonFromOrder(order Order) {
-
-	if order.Type == ORDER_UP{
-		io.SetBit(containerButtonFloor[0][order.Floor].BusChannelLight)
-	} else if order.Type == ORDER_DOWN{
-		io.SetBit(containerButtonFloor[1][order.Floor].BusChannelLight)
-	} else if order.Type == ORDER_INSIDE{
-		io.SetBit(containerButtonFloor[2][order.Floor].BusChannelLight)
-	}
-}
-
-func TurnOffLightButtonFromOrder(order Order) {
-
-	if order.Type == ORDER_UP{
-		io.ClearBit(containerButtonFloor[0][order.Floor].BusChannelLight)
-	} else if order.Type == ORDER_DOWN{
-		io.ClearBit(containerButtonFloor[1][order.Floor].BusChannelLight)
-	} else if order.Type == ORDER_INSIDE{
-		io.ClearBit(containerButtonFloor[2][order.Floor].BusChannelLight)
-	}
-}
-
-func TurnOffAllLightButtonsOnFloor(floor int) {
-	io.ClearBit(containerButtonFloor[0][floor].BusChannelLight)
-	io.ClearBit(containerButtonFloor[1][floor].BusChannelLight)
-	io.ClearBit(containerButtonFloor[2][floor].BusChannelLight)
-}
-//-----------------------------------------------//
 
 func SetLastReachedFloor(floorReached int) {
 	
@@ -217,11 +221,10 @@ func registerEventReachedFloor(eventReachedNewFloor chan int) {
 
 func registerEventStop(eventStop chan bool) {
 
-	buttonStopPreviouslyPressed := buttonStop.Pressed;
-	buttonStop.Pressed = io.IsBitSet(buttonStop.BusChannelPressed);
+	buttonStop.UpdateState();
 
-	if buttonStop.Pressed && !buttonStopPreviouslyPressed {
-		eventStop <- true
+	if buttonStop.IsPressed() {
+		eventStop <- true;
 	}
 }
 
@@ -229,12 +232,11 @@ func registerEventStop(eventStop chan bool) {
 
 func registerEventObstruction(eventObstruction chan bool) {
 
-	buttonObstructionPreviouslyPressed := buttonObstruction.Pressed;
-	buttonObstruction.Pressed = io.IsBitSet(buttonObstruction.BusChannelPressed);
+	buttonObstruction.UpdateState();
 
-	if buttonObstruction.Pressed && !buttonObstructionPreviouslyPressed {
+	if buttonObstruction.IsPressed() {
 		eventObstruction <- true;
-	} else if !buttonObstruction.Pressed && buttonObstructionPreviouslyPressed {
+	} else if buttonObstruction.IsReleased() {
 		eventObstruction <- false;
 	}
 }
@@ -248,16 +250,10 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
 			button := containerButtonFloor[buttonTypeIndex][buttonFloorIndex];
 
-			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.Floor == NUMBER_OF_FLOORS - 1) { 		// Omitting the non-existing buttons
+			button.UpdateState(); containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for GO bug
 
-				buttonPreviouslyPressed := button.Pressed;
-				button.Pressed 			 = io.IsBitSet(button.BusChannelPressed);
-
-				containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for go bug
-
-				if button.Pressed && !buttonPreviouslyPressed {
-					eventButtonFloorPressed <- button;
-				}
+			if button.IsPressed() {
+				eventButtonFloorPressed <- button;
 			}
 		}
 	}
