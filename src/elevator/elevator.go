@@ -68,9 +68,11 @@ func Stop() {
 func initializeContainerButtonFloor() {
 	
 	containerButtonFloor = make([][]ButtonFloor, 3);
+
 	for i := range containerButtonFloor {
-		containerButtonFloor[i] = make([]ButtonFloor, NUMBER_OF_FLOORS)
+		containerButtonFloor[i] = make([]ButtonFloor, NUMBER_OF_FLOORS);
 	}
+
 	containerButtonFloor[0][0] = ButtonFloor{BUTTON_CALL_UP, 		0, false, false, io.BUTTON_UP0, io.LIGHT_UP0};
 	containerButtonFloor[0][1] = ButtonFloor{BUTTON_CALL_UP, 		1, false, false, io.BUTTON_UP1, io.LIGHT_UP1};
 	containerButtonFloor[0][2] = ButtonFloor{BUTTON_CALL_UP, 		2, false, false, io.BUTTON_UP2, io.LIGHT_UP2};
@@ -90,10 +92,10 @@ func initializeSimpleButtons() {
 
 	buttonStop 			= ButtonSimple{BUTTON_STOP, 		false, false, io.STOP};
 	buttonObstruction 	= ButtonSimple{BUTTON_OBSTRUCTION, 	false, false, io.OBSTRUCTION};
-
 }
 
 func Initialize() *ErrorElevator {
+
 	err := io.Initialize();
 
 	if err != nil {
@@ -103,16 +105,22 @@ func Initialize() *ErrorElevator {
 
 	initializeContainerButtonFloor();
 	initializeSimpleButtons();
+
 	for floor := 0; floor < NUMBER_OF_FLOORS ; floor++ {
-	
 		TurnOffAllLightButtonsOnFloor(floor)
 	}
+
 	return nil;
 }
 
 //-----------------------------------------------//
 
 func switchLightFloorIndicator(floorReached int) {
+
+	// 00: Floor 0
+	// 01: Floor 1
+	// 10: Floor 2
+	// 11: Floor 3
 
 	bit_1 :=  (floorReached) 		% 2;
 	bit_2 := ((floorReached) >> 1)  % 2;
@@ -127,7 +135,7 @@ func switchLightFloorIndicator(floorReached int) {
 		io.SetBit(io.LIGHT_FLOOR_INDICATOR2)
 	} else {
 		io.ClearBit(io.LIGHT_FLOOR_INDICATOR2)
-	}	
+	}
 }
 
 func TurnOnLightDoorOpen() {
@@ -171,7 +179,6 @@ func SetLastReachedFloor(floorReached int) {
 	
 	lastReachedFloor = floorReached;
 	switchLightFloorIndicator(floorReached);
-
 }
 
 func GetLastReachedFloor() int {
