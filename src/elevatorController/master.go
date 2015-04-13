@@ -8,42 +8,56 @@ import(
 
 //-----------------------------------------------//
 
-var isCurrentlyMaster bool = true;
+type State int
+
+const (
+	STATE_IDLE   								State = iota
+	STATE_AWAITING_COST_RESPONSE   				State = iota
+	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
+	STATE_AWAITING_MASTER_DATA_COLLECTION 		State = iota
+	STATE_INACTIVE 								State = iota
+);
+
+currentState State = STATE_IDLE;
+
+//-----------------------------------------------//
+
+func handleEventNewOrder(orderEncoded []byte) {
+	
+	switch currentState {
+		case STATE_IDLE:
+
+			broadcastChannel <- network.Message{ RecipientName : "slaveOrderRequest", Data : orderEncoded };
+
+			currentState = STATE_AWAITING_COST_RESPONSE;
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+
+	}
+}
 
 func master(broadcastChannel chan network.Message, addServerRecipientChannel chan network.Recipient) {
 
 	newOrderRecipient := network.Recipient{ Name : "masterNewOrder", Channel : make(chan []byte) };
-	//newOrderRecipient := network.Recipient{ Name : "masterNewOrder", Channel : make(chan []byte) };
+	newCostResponseRecipient := network.Recipient{ Name : "masterCost", Channel : make(chan []byte) };
 
 	addServerRecipientChannel <- newOrderRecipient;
-	//addServerRecipientChannel <- newOrderRecipient;
+	addServerRecipientChannel <- newCostResponseRecipient;
 	
 	for {
 		select {
 			case orderEncoded := <- newOrderRecipient.Channel:
-				
-				if isCurrentlyMaster {
 
-					var order Order;
-					err := JSON.Decode(orderEncoded, &order);
+				handleEventNewOrder(orderEncoded);
+			
+			case cost := <- newCostResponseRecipient.Channel:
 
-					if err != nil {
+				handleEventCostResponse();
 
-					}
+			case 
 
-					broadcastChannel <- network.Message{ RecipientName : "receiveNewDestinationOrder", Data : orderEncoded };
-
-					// <- newOrder;
-
-					// If not received
-					// Ask all slaves
-					// Wait for response cost for some time
-					// Send order to best slave
-						// Wait for ack
-
-				} else {
-					// Dont care
-				}
+					broadcastChannel <- network.Message{ RecipientName : "receiveNewDestinationOrder", Data : orderEncoded };				
 		}	
 	}
 }

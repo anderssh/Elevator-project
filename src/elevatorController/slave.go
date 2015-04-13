@@ -66,7 +66,7 @@ func handleNewDestinationOrder(orderEncoded []byte, elevatorEventNewOrder chan O
 	elevatorEventNewOrder <- order;
 }
 
-func handleRequestCostOfOrder(order Order) {
+func handleMasterCostRequest(order Order) {
 	
 	// Get cost
 	// Return on master network
@@ -79,20 +79,21 @@ func slave(broadcastChannel 		  chan network.Message,
 		   elevatorOrderReceiver 	  chan Order,
 		   elevatorEventNewOrder      chan Order) {
 
-	newDestinationOrderRecipient := network.Recipient{ Name : "receiveNewDestinationOrder", Channel : make(chan []byte) };
-	requestCostOfOrderRecipient  := network.Recipient{ Name : "requestCostOfOrder", 		Channel : make(chan []byte) };
+	newMasterDestinationOrderRecipient := network.Recipient{ Name : "receiveNewDestinationOrder", Channel : make(chan []byte) };
+	masterCostRequestRecipient  := network.Recipient{ Name : "requestCostOfOrder", 		Channel : make(chan []byte) };
 
-	addServerRecipientChannel <- newDestinationOrderRecipient;
-	addServerRecipientChannel <- requestCostOfOrderRecipient;
+	addServerRecipientChannel <- newMasterDestinationOrderRecipient;
+	addServerRecipientChannel <- masterCostRequestRecipient;
 	
 	for {
 		select {
 			case order := <- elevatorOrderReceiver:
 				handleNewOrder(order, broadcastChannel, elevatorEventNewOrder);
-			case orderEncoded := <- newDestinationOrderRecipient.Channel:
-				handleNewDestinationOrder(orderEncoded, elevatorEventNewOrder);
-			case orderEncoded := <- requestCostOfOrderRecipient.Channel:
-				log.Warning("Get cost of order", orderEncoded);
+			case orderEncoded := <- newMasterDestinationOrderRecipient.Channel:
+				handleMasterNewDestinationOrder(orderEncoded, elevatorEventNewOrder);
+			case orderEncoded := <- masterCostRequestRecipient.Channel:
+				handleMasterCostRequest(orderEncoded);
+
 		}
 	}
 }
