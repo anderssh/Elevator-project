@@ -4,7 +4,7 @@ import(
 	. "../typeDefinitions"
 	"../elevator"
 	"../log"
-	"../orders"
+	"../ordersLocal"
 	"time"
 	"fmt"
 );
@@ -85,7 +85,7 @@ func Display() {
 
 		fmt.Print("\t");
 
-		if orders.AlreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
+		if ordersLocal.AlreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
 			fmt.Print("\x1b[31;1m");
 			fmt.Print("O");
 			fmt.Print("\x1b[0m");
@@ -95,7 +95,7 @@ func Display() {
 
 		fmt.Print(" ");
 
-		if orders.AlreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
+		if ordersLocal.AlreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
 			fmt.Print("\x1b[31;1m");
 			fmt.Print("^");
 			fmt.Print("\x1b[0m");
@@ -105,7 +105,7 @@ func Display() {
 
 		fmt.Print(" ");
 
-		if orders.AlreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
+		if ordersLocal.AlreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
 			fmt.Print("\x1b[31;1m");
 			fmt.Print("_");
 			fmt.Print("\x1b[0m");
@@ -174,12 +174,12 @@ func handleEventCloseDoor() {
 
 			elevator.TurnOffLightDoorOpen();
 
-			orders.RemoveOnFloor(elevator.GetLastReachedFloor());
+			ordersLocal.RemoveOnFloor(elevator.GetLastReachedFloor());
 			elevator.TurnOffAllLightButtonsOnFloor(elevator.GetLastReachedFloor());
 
-			if orders.Exists() {
+			if ordersLocal.Exists() {
 
-				floorDestination = orders.GetDestination();
+				floorDestination = ordersLocal.GetDestination();
 			
 				if floorDestination == elevator.GetLastReachedFloor() {
 					
@@ -216,15 +216,15 @@ func handleEventButtonPressed(button ButtonFloor) {
 
 		case STATE_IDLE:
 
-			orderHandler <- orders.OrderFromButtonFloor(button);
+			orderHandler <- ordersLocal.OrderFromButtonFloor(button);
 
 		case STATE_MOVING:
 
-			orderHandler <- orders.OrderFromButtonFloor(button);
+			orderHandler <- ordersLocal.OrderFromButtonFloor(button);
 
 		case STATE_DOOR_OPEN:
 
-			orderHandler <- orders.OrderFromButtonFloor(button);
+			orderHandler <- ordersLocal.OrderFromButtonFloor(button);
 	}
 }
 
@@ -239,14 +239,14 @@ func handleEventNewOrder(order Order) {
 
 		case STATE_IDLE:
 
-			if !orders.AlreadyStored(order) {
-				orders.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+			if !ordersLocal.AlreadyStored(order) {
+				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
 			}
 
-			if orders.Exists() {
+			if ordersLocal.Exists() {
 
-				floorDestination = orders.GetDestination();
+				floorDestination = ordersLocal.GetDestination();
 				
 				if (floorDestination == elevator.GetLastReachedFloor()) {
 					
@@ -267,18 +267,18 @@ func handleEventNewOrder(order Order) {
 
 		case STATE_MOVING:
 
-			if !orders.AlreadyStored(order) {
-				orders.Add(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
+			if !ordersLocal.AlreadyStored(order) {
+				ordersLocal.Add(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
-				floorDestination = orders.GetDestination();
+				floorDestination = ordersLocal.GetDestination();
 			}
 
 		case STATE_DOOR_OPEN:
 
-			if !orders.AlreadyStored(order) {
-				orders.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+			if !ordersLocal.AlreadyStored(order) {
+				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
-				floorDestination = orders.GetDestination();
+				floorDestination = ordersLocal.GetDestination();
 			}
 	}
 }
