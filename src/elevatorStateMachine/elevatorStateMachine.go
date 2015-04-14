@@ -26,14 +26,48 @@ const (
 var currentState 		State;
 var floorDestination 	int;
 
-var eventReachedNewFloor 	chan int 			= make(chan int);
-var eventCloseDoor 			chan bool 			= make(chan bool);
-var eventStop 				chan bool 			= make(chan bool);
-var eventObstruction 		chan bool 			= make(chan bool);
-var eventButtonFloorPressed chan ButtonFloor 	= make(chan ButtonFloor);
-var eventNewOrder 			chan Order;
+var eventReachedNewFloor 	chan int;
+var eventCloseDoor 			chan bool;
+var eventStop 				chan bool;
+var eventObstruction 		chan bool;
+var eventButtonFloorPressed chan ButtonFloor;
 
+var eventNewOrder 			chan Order;
 var orderHandler 			chan Order;
+
+var eventCostRequest		chan Order;
+var costResponseHandler 	chan int;
+
+//-----------------------------------------------//
+
+func Initialize(orderHandlerArg chan Order,
+				eventNewOrderArg chan Order,
+				eventCostRequestArg chan Order,
+				costResponseHandlerArg chan int) {
+
+	err := elevator.Initialize();
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	eventReachedNewFloor 	= make(chan int);
+	eventCloseDoor 			= make(chan bool);
+	eventStop 				= make(chan bool);
+	eventObstruction 		= make(chan bool);
+	eventButtonFloorPressed = make(chan ButtonFloor);
+	
+	orderHandler 	= orderHandlerArg;
+	eventNewOrder 	= eventNewOrderArg;
+
+	eventCostRequest = eventCostRequestArg;
+	costResponseHandler = costResponseHandlerArg
+
+	currentState 	= STATE_IDLE;
+	floorDestination = -1;
+
+	elevator.DriveInDirection(DIRECTION_DOWN);
+}
 
 //-----------------------------------------------//
 
@@ -283,6 +317,28 @@ func handleEventNewOrder(order Order) {
 			}
 	}
 }
+//-----------------------------------------------//
+
+func handleEventCostRequest(order Order) {
+	
+	switch currentState {
+		case STATE_STARTUP:
+
+			log.Warning("Tride to get cost when in startup. Nothing happens");
+
+		case STATE_IDLE:
+
+			costResponseHandler <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+
+		case STATE_MOVING:
+		
+			costResponseHandler <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
+
+		case STATE_DOOR_OPEN:
+
+			costResponseHandler <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+	}
+}
 
 //-----------------------------------------------//
 
@@ -317,27 +373,14 @@ func stateMachine() {
 
 				handleEventNewOrder(order);
 				//Display();
+			case order := <- eventCostRequest:
+
+				handleEventCostRequest(order);
 		}
 	}
 }
 
 //-----------------------------------------------//
-
-func Initialize(orderHandlerArg chan Order, eventNewOrderArg chan Order) {
-
-	err := elevator.Initialize();
-
-	if err != nil {
-		log.Error(err);
-	}
-
-	orderHandler 	= orderHandlerArg;
-	eventNewOrder 	= eventNewOrderArg;
-
-	currentState 	= STATE_STARTUP;
-
-	elevator.DriveInDirection(DIRECTION_DOWN);
-}
 
 func Run() {
 

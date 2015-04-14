@@ -4,7 +4,7 @@ import(
 	. "../typeDefinitions"
 	"../network"
 	"../encoder/JSON"
-	//"../log"
+	"../log"
 );
 
 //-----------------------------------------------//
@@ -37,7 +37,7 @@ func removeUnconfirmedOrder(order Order) {
 
 //-----------------------------------------------//
 
-func handleNewOrder(order Order, broadcastChannel chan network.Message, elevatorEventNewOrder chan Order) {
+func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewOrder chan Order) {
 	
 	if order.Type == ORDER_INSIDE { 								// Should only be dealt with locally
 		
@@ -50,14 +50,14 @@ func handleNewOrder(order Order, broadcastChannel chan network.Message, elevator
 			ordersUnconfirmed = append(ordersUnconfirmed, order); 	// Store until it is handled by some master
 			orderEncoded, _ := JSON.Encode(order);
 
-			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255")
+			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255");
 
-			broadcastChannel <- message;
+			transmitChannel <- message;
 		}
 	}
 }
 
-func handleMasterNewDestinationOrder(message network.Message, elevatorEventNewOrder chan Order) {
+func slaveHandleEventNewDestinationOrder(message network.Message, elevatorEventNewOrder chan Order) {
 	
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
@@ -68,33 +68,57 @@ func handleMasterNewDestinationOrder(message network.Message, elevatorEventNewOr
 	elevatorEventNewOrder <- order;
 }
 
-func handleMasterCostRequest(message network.Message) {
+func slaveHandleCostRequest(message network.Message, elevatorEventCostRequest chan Order) {
 	
-	// Get cost
-	// Return on master network
+	log.Data("Slave: Got request for cost of order")
+
+	var order Order;
+	err := JSON.Decode(message.Data, &order);
+
+	log.Error(err);
+
+	elevatorEventCostRequest <- order;
+}
+
+func slaveHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {
+
+	costEncoded, _ := JSON.Encode(cost);
+	log.Data("Slave: Cost from local", cost)
+	transmitChannel <- network.MakeMessage("masterCostResponse", costEncoded, network.BROADCAST_ADDR);
 }
 
 //-----------------------------------------------//
  
-func slave(broadcastChannel 		  chan network.Message,
-		   addServerRecipientChannel  chan network.Recipient,
-		   elevatorOrderReceiver 	  chan Order,
-		   elevatorEventNewOrder      chan Order) {
+func slave(transmitChannel 		  	  	chan network.Message,
+		   addServerRecipientChannel  	chan network.Recipient,
+		   elevatorOrderReceiver 	  	chan Order,
+		   elevatorEventNewOrder      	chan Order,
+		   elevatorEventCostRequest   	chan Order,
+		   elevatorCostResponseReceiver	chan int) {
 
-	newMasterDestinationOrderRecipient 	:= network.Recipient{ ID : "receiveNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
-	masterCostRequestRecipient  		:= network.Recipient{ ID : "requestCostOfOrder", 		ReceiveChannel : make(chan network.Message) };
+	newDestinationOrderRecipient := network.Recipient{ ID : "slaveNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
+	costRequestRecipient 		 := network.Recipient{ ID : "slaveCostRequest", ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- newMasterDestinationOrderRecipient;
-	addServerRecipientChannel <- masterCostRequestRecipient;
+	addServerRecipientChannel <- newDestinationOrderRecipient;
+	addServerRecipientChannel <- costRequestRecipient;
 	
 	for {
 		select {
 			case order := <- elevatorOrderReceiver:
-				handleNewOrder(order, broadcastChannel, elevatorEventNewOrder);
-			case message := <- newMasterDestinationOrderRecipient.ReceiveChannel:
-				handleMasterNewDestinationOrder(message, elevatorEventNewOrder);
-			case message := <- masterCostRequestRecipient.ReceiveChannel:
-				handleMasterCostRequest(message);
+				
+				slaveHandleEventNewOrder(order, transmitChannel, elevatorEventNewOrder);
+			
+			case message := <- newDestinationOrderRecipient.ReceiveChannel:
+				
+				slaveHandleEventNewDestinationOrder(message, elevatorEventNewOrder);
+			
+			case message := <- costRequestRecipient.ReceiveChannel:
+				
+				slaveHandleCostRequest(message, elevatorEventCostRequest);
+
+			case cost := <- elevatorCostResponseReceiver:
+
+				slaveHandleElevatorCostResponse(cost, transmitChannel);
 
 		}
 	}

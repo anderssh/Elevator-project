@@ -11,6 +11,9 @@ import(
 var elevatorOrderReceiver chan Order;
 var elevatorEventNewOrder chan Order;
 
+var elevatorEventCostRequest chan Order;
+var elevatorCostResponseReceiver chan int;
+
 //-----------------------------------------------//
 
 func Initialize() {
@@ -18,7 +21,13 @@ func Initialize() {
 	elevatorOrderReceiver = make(chan Order);
 	elevatorEventNewOrder = make(chan Order);
 
-	elevatorStateMachine.Initialize(elevatorOrderReceiver, elevatorEventNewOrder);
+	elevatorEventCostRequest = make(chan Order);
+	elevatorCostResponseReceiver = make(chan int);
+
+	elevatorStateMachine.Initialize(elevatorOrderReceiver,
+									elevatorEventNewOrder,
+									elevatorEventCostRequest,
+									elevatorCostResponseReceiver);
 }
 
 func Run() {
@@ -32,5 +41,5 @@ func Run() {
 	go network.TransmitServer(broadcastChannel);
 
 	go master(broadcastChannel, addServerRecipientChannel);
-	go slave(broadcastChannel, addServerRecipientChannel, elevatorOrderReceiver, elevatorEventNewOrder);
+	go slave(broadcastChannel, addServerRecipientChannel, elevatorOrderReceiver, elevatorEventNewOrder, elevatorEventCostRequest, elevatorCostResponseReceiver);
 }

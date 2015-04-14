@@ -14,7 +14,7 @@ const(
 
 //-----------------------------------------------//
 
-var orders []Order;
+var orders []Order = make([]Order, 0, 1);
 
 //-----------------------------------------------//
 
@@ -203,13 +203,13 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 
 //-----------------------------------------------//
 
-func GetCostOf(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) float64 {
+func GetCostOf(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) int {
 	
 	index := GetIndexInQueue(order, elevatorLastFloorVisited, isElevatorMoving, elevatorDirection);
 
 	if index == 0 {
 
-		return math.Abs(float64(order.Floor - elevatorLastFloorVisited));
+		return int(math.Abs(float64(order.Floor - elevatorLastFloorVisited)));
 	
 	} else {
 
@@ -233,6 +233,6 @@ func GetCostOf(order Order, elevatorLastFloorVisited int, isElevatorMoving bool,
 		// Last step
 		cost = cost + math.Abs(float64(order.Floor - orders[index - 1].Floor));
 
-		return cost;
+		return int(cost);
 	}
 }
