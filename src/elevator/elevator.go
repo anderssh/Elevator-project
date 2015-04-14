@@ -27,10 +27,10 @@ func (err *ErrorElevator) Error() string {
 
 var lastReachedFloor 		int 	= -1;
 
-var buttonStop 			ButtonSimple
-var buttonObstruction 	ButtonSimple
+var buttonStop 			ButtonSimple;
+var buttonObstruction 	ButtonSimple;
 
-var containerButtonFloor [][]ButtonFloor
+var containerButtonFloor [][]ButtonFloor;
 
 //-----------------------------------------------//
 
@@ -66,7 +66,7 @@ func Stop() {
 
 func initializeContainerButtonFloor() {
 	
-	containerButtonFloor = make([][]ButtonFloor, 3);
+	containerButtonFloor = make(map[OrderType][]ButtonFloor, 3);
 
 	for i := range containerButtonFloor {
 		containerButtonFloor[i] = make([]ButtonFloor, NUMBER_OF_FLOORS);
@@ -75,12 +75,12 @@ func initializeContainerButtonFloor() {
 	containerButtonFloor[0][0] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 0, IoRegisterPressed : io.BUTTON_UP0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP0 };
 	containerButtonFloor[0][1] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 1, IoRegisterPressed : io.BUTTON_UP1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP1 };
 	containerButtonFloor[0][2] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 2, IoRegisterPressed : io.BUTTON_UP2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP2 };
-	containerButtonFloor[0][3] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 3 };
+	containerButtonFloor[0][3] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 3, IoRegisterPressed : io.BUTTON_UP3, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP3 };
 
-	containerButtonFloor[1][0] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 0 };
-	containerButtonFloor[1][1] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 1, IoRegisterPressed : io.BUTTON_DOWN0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN0 };
-	containerButtonFloor[1][2] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 2, IoRegisterPressed : io.BUTTON_DOWN1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN1 };
-	containerButtonFloor[1][3] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 3, IoRegisterPressed : io.BUTTON_DOWN2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN2 };
+	containerButtonFloor[1][0] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 1, IoRegisterPressed : io.BUTTON_DOWN0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN0 };
+	containerButtonFloor[1][1] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 1, IoRegisterPressed : io.BUTTON_DOWN1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN1 };
+	containerButtonFloor[1][2] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 2, IoRegisterPressed : io.BUTTON_DOWN2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN2 };
+	containerButtonFloor[1][3] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 3, IoRegisterPressed : io.BUTTON_DOWN3, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN3 };
 	
 	containerButtonFloor[2][0] = ButtonFloor{ Type : BUTTON_CALL_INSIDE, Floor : 0, IoRegisterPressed : io.BUTTON_CALL_INSIDE0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_CALL_INSIDE0 };
 	containerButtonFloor[2][1] = ButtonFloor{ Type : BUTTON_CALL_INSIDE, Floor : 1, IoRegisterPressed : io.BUTTON_CALL_INSIDE1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_CALL_INSIDE1 };
@@ -149,8 +149,14 @@ func TurnOffLightButtonFromOrder(order Order) {
 
 func TurnOffAllLightButtonsOnFloor(floor int) {
 
-	containerButtonFloor[0][floor].TurnOffLight();
-	containerButtonFloor[1][floor].TurnOffLight();
+	if floor < NUMBER_OF_FLOORS - 1 {
+		containerButtonFloor[0][floor].TurnOffLight(); 		// ORDER_UP
+	}
+
+	if floor > 0 {
+		containerButtonFloor[1][floor].TurnOffLight(); 		// ORDER_DOWN
+	}
+
 	containerButtonFloor[2][floor].TurnOffLight();
 }
 
@@ -250,10 +256,13 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
 			button := containerButtonFloor[buttonTypeIndex][buttonFloorIndex];
 
-			button.UpdateState(); containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for GO bug
+			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.FLoor == NUMBER_OF_FLOORS - 1) { // Omit non existing buttons
 
-			if button.IsPressed() {
-				eventButtonFloorPressed <- button;
+				button.UpdateState(); containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for GO bug
+
+				if button.IsPressed() {
+					eventButtonFloorPressed <- button;
+				}
 			}
 		}
 	}
