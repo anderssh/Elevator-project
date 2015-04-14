@@ -1,49 +1,63 @@
 package elevatorController;
 
 import(
-	. "../typeDefinitions"
+	//"../typeDefinitions"
 	"../network"
-	"../encoder/JSON"
+	//"../encoder/JSON"
 );
 
 //-----------------------------------------------//
 
-var isCurrentlyMaster bool = true;
+type State int
+
+const (
+	STATE_IDLE   								State = iota
+	STATE_AWAITING_COST_RESPONSE   				State = iota
+	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
+	STATE_AWAITING_MASTER_DATA_COLLECTION 		State = iota
+	STATE_INACTIVE 								State = iota
+);
+
+var currentState State = STATE_IDLE;
+
+//-----------------------------------------------//
+
+func handleEventNewOrder(message network.Message, broadcastChannel chan network.Message) {
+	
+	orderEncoded := message.Data;
+
+	switch currentState {
+		case STATE_IDLE:
+
+			broadcastChannel <- network.MakeMessage("slaveOrderRequest", orderEncoded, network.BROADCAST_ADDR);
+
+			currentState = STATE_AWAITING_COST_RESPONSE;
+
+		case STATE_AWAITING_COST_RESPONSE:
+	}
+}
+
+func handleEventCostResponse(message network.Message){
+
+}
 
 func master(broadcastChannel chan network.Message, addServerRecipientChannel chan network.Recipient) {
 
-	newOrderRecipient := network.Recipient{ Name : "masterNewOrder", Channel : make(chan []byte) };
-	//newOrderRecipient := network.Recipient{ Name : "masterNewOrder", Channel : make(chan []byte) };
+	orderRecipient := network.Recipient{ Name : "masterNewOrder", ReceiveChannel : make(chan network.Message) };
+	costResponseRecipient := network.Recipient{ Name : "masterCost", ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- newOrderRecipient;
-	//addServerRecipientChannel <- newOrderRecipient;
+	addServerRecipientChannel <- orderRecipient;
+	addServerRecipientChannel <- costResponseRecipient;
 	
 	for {
 		select {
-			case orderEncoded := <- newOrderRecipient.Channel:
-				
-				if isCurrentlyMaster {
+			case message := <- orderRecipient.ReceiveChannel:
 
-					var order Order;
-					err := JSON.Decode(orderEncoded, &order);
+				handleEventNewOrder(message, broadcastChannel);
+			
+			case message := <- costResponseRecipient.ReceiveChannel:
 
-					if err != nil {
-
-					}
-
-					broadcastChannel <- network.Message{ RecipientName : "receiveNewDestinationOrder", Data : orderEncoded };
-
-					// <- newOrder;
-
-					// If not received
-					// Ask all slaves
-					// Wait for response cost for some time
-					// Send order to best slave
-						// Wait for ack
-
-				} else {
-					// Dont care
-				}
+				handleEventCostResponse(message);
 		}	
 	}
 }
