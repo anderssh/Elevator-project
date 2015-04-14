@@ -6,6 +6,11 @@ import(
 
 //-----------------------------------------------//
 
+type OrderGlobal struct {
+	IPAddr 	string;
+	order 	Order;
+}
+
 var orders []Order = make([]Order, 0, 1);
 
 //-----------------------------------------------//
