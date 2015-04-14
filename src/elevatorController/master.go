@@ -11,6 +11,13 @@ import(
 
 type State int
 
+type costBid struct {
+	Value			int
+	SenderIPAddr 	string
+}
+
+var costBids []costBid;
+
 const (
 	STATE_IDLE   								State = iota
 	STATE_AWAITING_COST_RESPONSE   				State = iota
@@ -44,9 +51,8 @@ func masterHandleEventNewOrder(message network.Message, transmitChannel chan net
 	}
 }
 
+var 
 func masterHandleEventCostResponse(message network.Message, transmitChannel chan network.Message){
-
-	costEncoded := message.Data;
 
 	switch currentState {
 		case STATE_IDLE:
@@ -54,10 +60,12 @@ func masterHandleEventCostResponse(message network.Message, transmitChannel chan
 		case STATE_AWAITING_COST_RESPONSE:
 
 			var cost int;
-			err := JSON.Decode(costEncoded, &cost);
+			err := JSON.Decode(message.Data, &cost);
 
 			log.Error(err);
 			log.Data("Master: Got cost", cost, message.SenderIPAddr);
+			newCostBid := {Value: = cost, SenderIPAddr, message.SenderIPAddr}
+			costBids = append(costBids, {})
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
@@ -73,6 +81,8 @@ func master(transmitChannel chan network.Message, addServerRecipientChannel chan
 
 	newOrderRecipient 		:= network.Recipient{ ID : "masterNewOrder", 		ReceiveChannel : make(chan network.Message) };
 	costResponseRecipient 	:= network.Recipient{ ID : "masterCostResponse", 	ReceiveChannel : make(chan network.Message) };
+	
+	costBids = make([]costBid,0,1);
 
 	addServerRecipientChannel <- newOrderRecipient;
 	addServerRecipientChannel <- costResponseRecipient;
