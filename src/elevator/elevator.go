@@ -104,7 +104,7 @@ func Initialize() *ErrorElevator {
 		return &ErrorElevator{"Failed to initialize hardware."};
 	}
 
-	lastReachedFloor = 3;
+	lastReachedFloor = -1;
 
 	initializeContainerButtonFloor();
 	initializeSimpleButtons();

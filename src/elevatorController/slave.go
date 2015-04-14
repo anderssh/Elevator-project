@@ -5,35 +5,9 @@ import(
 	"../network"
 	"../encoder/JSON"
 	"../log"
+	"../ordersGlobal"
+	"../ordersUnconfirmed"
 );
-
-//-----------------------------------------------//
-
-var ordersUnconfirmed []Order = make([]Order, 0, 1);
-
-func ordersUnconfirmedExists(order Order) bool {
-
-	for orderIndex := range ordersUnconfirmed {
-		if ordersUnconfirmed[orderIndex].Type == order.Type && ordersUnconfirmed[orderIndex].Floor == order.Floor {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-func removeUnconfirmedOrder(order Order) {
-
-	for orderIndex := range ordersUnconfirmed {
-		if ordersUnconfirmed[orderIndex].Type == order.Type && ordersUnconfirmed[orderIndex].Floor == order.Floor {
-			if (orderIndex == len(ordersUnconfirmed) - 1) {
-				ordersUnconfirmed = ordersUnconfirmed[:(len(ordersUnconfirmed) - 1)];
-			} else {
-				ordersUnconfirmed = append(ordersUnconfirmed[0:orderIndex], ordersUnconfirmed[orderIndex + 1:] ... );
-			}
-		}
-	}
-}
 
 //-----------------------------------------------//
 
@@ -45,9 +19,9 @@ func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message,
 		
 	} else {
 
-		if !ordersUnconfirmedExists(order) {
+		if !ordersUnconfirmed.AlreadyStored(order) {
 			
-			ordersUnconfirmed = append(ordersUnconfirmed, order); 	// Store until it is handled by some master
+			ordersUnconfirmed.Add(order);
 			orderEncoded, _ := JSON.Encode(order);
 
 			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255");
@@ -64,7 +38,12 @@ func slaveHandleEventNewDestinationOrder(message network.Message, elevatorEventN
 
 	if err != nil {}
 
-	removeUnconfirmedOrder(order);
+	ordersUnconfirmed.Remove(order);
+
+	if !ordersGlobal.AlreadyStored(order) {
+		ordersGlobal.Add(order);
+	}
+
 	elevatorEventNewOrder <- order;
 }
 
@@ -119,7 +98,6 @@ func slave(transmitChannel 		  	  	chan network.Message,
 			case cost := <- elevatorCostResponseReceiver:
 
 				slaveHandleElevatorCostResponse(cost, transmitChannel);
-
 		}
 	}
 }
