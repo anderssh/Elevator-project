@@ -2,6 +2,7 @@ package elevatorStateMachine
 
 import(
 	. "../typeDefinitions"
+	"../button"
 	"../elevator"
 	"../log"
 	"../ordersLocal"
@@ -216,15 +217,15 @@ func handleEventButtonPressed(button ButtonFloor) {
 
 		case STATE_IDLE:
 
-			orderHandler <- ordersLocal.OrderFromButtonFloor(button);
+			orderHandler <- button.ConvertToOrder();
 
 		case STATE_MOVING:
 
-			orderHandler <- ordersLocal.OrderFromButtonFloor(button);
+			orderHandler <- button.ConvertToOrder();
 
 		case STATE_DOOR_OPEN:
 
-			orderHandler <- ordersLocal.OrderFromButtonFloor(button);
+			orderHandler <- button.ConvertToOrder();
 	}
 }
 

@@ -3,6 +3,7 @@ package elevator
 import (
 	"../io"
 	"time"
+	"../button"
 	"../log"
 	. "../typeDefinitions"
 )

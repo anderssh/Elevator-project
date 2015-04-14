@@ -236,16 +236,3 @@ func GetCostOf(order Order, elevatorLastFloorVisited int, isElevatorMoving bool,
 		return cost;
 	}
 }
-
-//-----------------------------------------------//
-
-func OrderFromButtonFloor(button ButtonFloor) Order {
-	
-	if (button.Type == BUTTON_CALL_UP) {
-		return Order{ Type : ORDER_UP, Floor : button.Floor };
-	} else if (button.Type == BUTTON_CALL_DOWN) {
-		return Order{ Type : ORDER_DOWN, Floor : button.Floor };
-	} else {
-		return Order{ Type : ORDER_INSIDE, Floor : button.Floor };
-	}
-}
