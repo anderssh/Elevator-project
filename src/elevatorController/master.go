@@ -1,9 +1,9 @@
 package elevatorController;
 
 import(
-	. "../typeDefinitions"
+	//"../typeDefinitions"
 	"../network"
-	"../encoder/JSON"
+	//"../encoder/JSON"
 );
 
 //-----------------------------------------------//
@@ -18,46 +18,46 @@ const (
 	STATE_INACTIVE 								State = iota
 );
 
-currentState State = STATE_IDLE;
+var currentState State = STATE_IDLE;
 
 //-----------------------------------------------//
 
-func handleEventNewOrder(orderEncoded []byte) {
+func handleEventNewOrder(message network.Message, broadcastChannel chan network.Message) {
 	
+	orderEncoded := message.Data;
+
 	switch currentState {
 		case STATE_IDLE:
 
-			broadcastChannel <- network.Message{ RecipientName : "slaveOrderRequest", Data : orderEncoded };
+			broadcastChannel <- network.MakeMessage("slaveOrderRequest", orderEncoded, network.BROADCAST_ADDR);
 
 			currentState = STATE_AWAITING_COST_RESPONSE;
 
 		case STATE_AWAITING_COST_RESPONSE:
-
-
 	}
+}
+
+func handleEventCostResponse(message network.Message){
+
 }
 
 func master(broadcastChannel chan network.Message, addServerRecipientChannel chan network.Recipient) {
 
-	newOrderRecipient := network.Recipient{ Name : "masterNewOrder", Channel : make(chan []byte) };
-	newCostResponseRecipient := network.Recipient{ Name : "masterCost", Channel : make(chan []byte) };
+	orderRecipient := network.Recipient{ Name : "masterNewOrder", ReceiveChannel : make(chan network.Message) };
+	costResponseRecipient := network.Recipient{ Name : "masterCost", ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- newOrderRecipient;
-	addServerRecipientChannel <- newCostResponseRecipient;
+	addServerRecipientChannel <- orderRecipient;
+	addServerRecipientChannel <- costResponseRecipient;
 	
 	for {
 		select {
-			case orderEncoded := <- newOrderRecipient.Channel:
+			case message := <- orderRecipient.ReceiveChannel:
 
-				handleEventNewOrder(orderEncoded);
+				handleEventNewOrder(message, broadcastChannel);
 			
-			case cost := <- newCostResponseRecipient.Channel:
+			case message := <- costResponseRecipient.ReceiveChannel:
 
-				handleEventCostResponse();
-
-			case 
-
-					broadcastChannel <- network.Message{ RecipientName : "receiveNewDestinationOrder", Data : orderEncoded };				
+				handleEventCostResponse(message);
 		}	
 	}
 }

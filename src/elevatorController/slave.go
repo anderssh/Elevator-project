@@ -4,7 +4,7 @@ import(
 	. "../typeDefinitions"
 	"../network"
 	"../encoder/JSON"
-	"../log"
+	//"../log"
 );
 
 //-----------------------------------------------//
@@ -50,15 +50,17 @@ func handleNewOrder(order Order, broadcastChannel chan network.Message, elevator
 			ordersUnconfirmed = append(ordersUnconfirmed, order); 	// Store until it is handled by some master
 			orderEncoded, _ := JSON.Encode(order);
 
-			broadcastChannel <- network.Message{ RecipientName : "masterNewOrder", Data : orderEncoded };
+			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255")
+
+			broadcastChannel <- message;
 		}
 	}
 }
 
-func handleNewDestinationOrder(orderEncoded []byte, elevatorEventNewOrder chan Order) {
+func handleMasterNewDestinationOrder(message network.Message, elevatorEventNewOrder chan Order) {
 	
 	var order Order;
-	err := JSON.Decode(orderEncoded, &order);
+	err := JSON.Decode(message.Data, &order);
 
 	if err != nil {}
 
@@ -66,7 +68,7 @@ func handleNewDestinationOrder(orderEncoded []byte, elevatorEventNewOrder chan O
 	elevatorEventNewOrder <- order;
 }
 
-func handleMasterCostRequest(order Order) {
+func handleMasterCostRequest(message network.Message) {
 	
 	// Get cost
 	// Return on master network
@@ -79,8 +81,8 @@ func slave(broadcastChannel 		  chan network.Message,
 		   elevatorOrderReceiver 	  chan Order,
 		   elevatorEventNewOrder      chan Order) {
 
-	newMasterDestinationOrderRecipient := network.Recipient{ Name : "receiveNewDestinationOrder", Channel : make(chan []byte) };
-	masterCostRequestRecipient  := network.Recipient{ Name : "requestCostOfOrder", 		Channel : make(chan []byte) };
+	newMasterDestinationOrderRecipient := network.Recipient{ Name : "receiveNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
+	masterCostRequestRecipient  := network.Recipient{ Name : "requestCostOfOrder", 		ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- newMasterDestinationOrderRecipient;
 	addServerRecipientChannel <- masterCostRequestRecipient;
@@ -89,10 +91,10 @@ func slave(broadcastChannel 		  chan network.Message,
 		select {
 			case order := <- elevatorOrderReceiver:
 				handleNewOrder(order, broadcastChannel, elevatorEventNewOrder);
-			case orderEncoded := <- newMasterDestinationOrderRecipient.Channel:
-				handleMasterNewDestinationOrder(orderEncoded, elevatorEventNewOrder);
-			case orderEncoded := <- masterCostRequestRecipient.Channel:
-				handleMasterCostRequest(orderEncoded);
+			case message := <- newMasterDestinationOrderRecipient.ReceiveChannel:
+				handleMasterNewDestinationOrder(message, elevatorEventNewOrder);
+			case message := <- masterCostRequestRecipient.ReceiveChannel:
+				handleMasterCostRequest(message);
 
 		}
 	}
