@@ -29,7 +29,7 @@ func handleEventNewOrder(message network.Message, broadcastChannel chan network.
 	switch currentState {
 		case STATE_IDLE:
 
-			broadcastChannel <- network.MakeMessage("slaveOrderRequest", orderEncoded, network.BROADCAST_ADDR);
+			broadcastChannel <- network.MakeMessage("slaveCostRequest", orderEncoded, network.BROADCAST_ADDR);
 
 			currentState = STATE_AWAITING_COST_RESPONSE;
 
@@ -38,20 +38,20 @@ func handleEventNewOrder(message network.Message, broadcastChannel chan network.
 }
 
 func handleEventCostResponse(message network.Message){
-
+	
 }
 
 func master(broadcastChannel chan network.Message, addServerRecipientChannel chan network.Recipient) {
 
-	orderRecipient := network.Recipient{ Name : "masterNewOrder", ReceiveChannel : make(chan network.Message) };
-	costResponseRecipient := network.Recipient{ Name : "masterCost", ReceiveChannel : make(chan network.Message) };
+	newOrderRecipient 		:= network.Recipient{ ID : "masterNewOrder", 		ReceiveChannel : make(chan network.Message) };
+	costResponseRecipient 	:= network.Recipient{ ID : "masterCostResponse", 	ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- orderRecipient;
+	addServerRecipientChannel <- newOrderRecipient;
 	addServerRecipientChannel <- costResponseRecipient;
 	
 	for {
 		select {
-			case message := <- orderRecipient.ReceiveChannel:
+			case message := <- newOrderRecipient.ReceiveChannel:
 
 				handleEventNewOrder(message, broadcastChannel);
 			

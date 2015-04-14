@@ -1,9 +1,5 @@
 package typeDefinitions;
 
-import(
-	"../io"
-);
-
 //-----------------------------------------------//
 
 type Direction int
@@ -15,7 +11,7 @@ const(
 
 //-----------------------------------------------//
 
-type OrderType int 
+type OrderType int
 
 const(
 	ORDER_UP 		OrderType = iota

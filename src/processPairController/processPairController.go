@@ -22,7 +22,7 @@ func backupProcess() {
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
-	aliveRecipient := network.Recipient{ Name : "alive", ReceiveChannel : make(chan network.Message) };
+	aliveRecipient := network.Recipient{ ID : "alive", ReceiveChannel : make(chan network.Message) };
 
 	timeoutTriggerTime 	:= time.Millisecond * ALIVE_MESSAGE_DEADLINE;
 	timeoutNotifier 	:= make(chan bool);
@@ -56,7 +56,7 @@ func masterProcessAliveNotification() {
 	for {
 		time.Sleep(time.Millisecond * ALIVE_NOTIFICATION_DELAY);
 		aliveMessage, _ := JSON.Encode("Alive");
-		aliveTransmitChannel <- network.Message{ RecipientName : "alive", Data : aliveMessage };
+		aliveTransmitChannel <- network.MakeTimeoutMessage("alive", aliveMessage, network.LOCALHOST);
 	}
 }
 

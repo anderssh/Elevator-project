@@ -3,10 +3,10 @@ package elevator
 import (
 	"../io"
 	"time"
-	"../button"
-	"../log"
+	. "../buttonDefinitions"
 	. "../typeDefinitions"
-)
+	"../log"
+);
 
 //-----------------------------------------------//
 
@@ -67,7 +67,7 @@ func Stop() {
 
 func initializeContainerButtonFloor() {
 	
-	containerButtonFloor = make(map[OrderType][]ButtonFloor, 3);
+	containerButtonFloor = make([][]ButtonFloor, 3);
 
 	for i := range containerButtonFloor {
 		containerButtonFloor[i] = make([]ButtonFloor, NUMBER_OF_FLOORS);
@@ -259,7 +259,7 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
 			button := containerButtonFloor[buttonTypeIndex][buttonFloorIndex];
 
-			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.FLoor == NUMBER_OF_FLOORS - 1) { // Omit non existing buttons
+			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.Floor == NUMBER_OF_FLOORS - 1) { // Omit non existing buttons
 
 				button.UpdateState(); containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for GO bug
 

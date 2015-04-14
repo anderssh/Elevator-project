@@ -2,7 +2,7 @@ package elevatorStateMachine
 
 import(
 	. "../typeDefinitions"
-	"../button"
+	. "../buttonDefinitions"
 	"../elevator"
 	"../log"
 	"../ordersLocal"
@@ -26,11 +26,11 @@ const (
 var currentState 		State;
 var floorDestination 	int;
 
-var eventReachedNewFloor 	chan int 			= make(chan int)
-var eventCloseDoor 			chan bool 			= make(chan bool)
-var eventStop 				chan bool 			= make(chan bool)
-var eventObstruction 		chan bool 			= make(chan bool)
-var eventButtonFloorPressed chan ButtonFloor 	= make(chan ButtonFloor)
+var eventReachedNewFloor 	chan int 			= make(chan int);
+var eventCloseDoor 			chan bool 			= make(chan bool);
+var eventStop 				chan bool 			= make(chan bool);
+var eventObstruction 		chan bool 			= make(chan bool);
+var eventButtonFloorPressed chan ButtonFloor 	= make(chan ButtonFloor);
 var eventNewOrder 			chan Order;
 
 var orderHandler 			chan Order;

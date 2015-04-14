@@ -8,73 +8,87 @@ import(
 	"../encoder/JSON"
 );
 
+//-----------------------------------------------//
 
 const (
-	BROADCAST_ADDR string	= "255.255.255.255"
-	LOCALHOST string 		= "localhost"
-)
+	BROADCAST_ADDR 	string = "255.255.255.255"
+	LOCALHOST 		string = "localhost"
+
+	PORT_SERVER_DEFAULT 		int = 9125
+	PORT_SERVER_WITH_TIMEOUT	int = 9126
+);
+
 //-----------------------------------------------//
 
 var iPAddr 	string;
-var port 		int;
-
 
 func Initialize(){
 
-	port = 9120;
-    adresses, err := net.InterfaceAddrs()
+    adresses, err := net.InterfaceAddrs();
     if err != nil {
-        log.Error("Error in finding all Interface adresses")
+        log.Error("Error in finding all Interface adresses");
     }
 
     for _, address := range adresses {
 
-          // check the address type and if it is not a loopback the display it
-        if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+        if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() { 		// check the address type and if it is not a loopback the display it
             if ipnet.IP.To4() != nil {
               iPAddr = ipnet.IP.String();
-               }
-         }
+            }
+        }
 	}
 }
 
 //-----------------------------------------------//
 
 type Message struct {
-	RecipientName 		string;
+	RecipientID 		string;
 	
 	DestinationIPAddr 	string;
 	DestinationPort 	int;
 	
-	SenderIPAddr			string;
+	SenderIPAddr		string;
 	SenderPort			int;
 	
 	Data 				[]byte;
 }
 
-func MakeMessage (recipientName string, data []byte, destinationIPAddr string) Message {
+func MakeMessage(recipientID string, data []byte, destinationIPAddr string) Message {
 	
-	return 	Message{RecipientName : recipientName, 
-			DestinationIPAddr : destinationIPAddr, 
-			DestinationPort : port,
-			SenderIPAddr : iPAddr,
-			SenderPort : port,
-	 		Data : data}
+	return Message{	RecipientID : recipientID, 
+					
+					DestinationIPAddr : destinationIPAddr, 
+					DestinationPort : PORT_SERVER_DEFAULT,
+					
+					SenderIPAddr : iPAddr,
+					SenderPort : PORT_SERVER_DEFAULT,
+	 				
+	 				Data : data }
+}
+
+func MakeTimeoutMessage(recipientID string, data []byte, destinationIPAddr string) Message {
+	
+	return Message{	RecipientID : recipientID, 
+					
+					DestinationIPAddr : destinationIPAddr, 
+					DestinationPort : PORT_SERVER_WITH_TIMEOUT,
+					
+					SenderIPAddr : iPAddr,
+					SenderPort : PORT_SERVER_WITH_TIMEOUT,
+	 				
+	 				Data : data }
 }
 
 type Recipient struct {
-	Name 		string;
+	ID 				string;
 	ReceiveChannel 	chan Message;
 }
 
 //-----------------------------------------------//
 
-
-
-
 func listen(IPAddr string, messageChannel chan<- Message) {
 
-	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
+	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
 
 	defer func() {
@@ -115,7 +129,7 @@ func ListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 			case message := <- messageChannel:
 				
 				for recipientIndex := range recipients {
-					if message.RecipientName == recipients[recipientIndex].Name {
+					if message.RecipientID == recipients[recipientIndex].ID {
 						
 						recipients[recipientIndex].ReceiveChannel <- message;
 						break;
@@ -133,9 +147,10 @@ func ListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 
 func listenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
-	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
-	listenConnection, _ := net.ListenUDP("udp", listenAddress);
-	
+	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_WITH_TIMEOUT));
+	log.Error(listenAddress)
+	listenConnection, err := net.ListenUDP("udp", listenAddress);
+	log.Error(err)
 	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
 
 	defer func() {
@@ -186,7 +201,7 @@ func ListenServerWithTimeout(IPAddr string, addRecipientChannel chan Recipient, 
 			case message := <- messageChannel:
 				
 				for recipientIndex := range recipients {
-					if message.RecipientName == recipients[recipientIndex].Name {
+					if message.RecipientID == recipients[recipientIndex].ID {
 						recipients[recipientIndex].ReceiveChannel <- message;
 						break;
 					}
@@ -207,7 +222,7 @@ func TransmitServer(sendChannel chan Message) {
 		select {
 			case message := <- sendChannel:
 
-				transmitAddr, _ := net.ResolveUDPAddr("udp", message.DestinationIPAddr + ":" + strconv.Itoa(message.DestinationPort));
+				transmitAddr, _   := net.ResolveUDPAddr("udp", message.DestinationIPAddr + ":" + strconv.Itoa(message.DestinationPort));
 				encodedMessage, _ := JSON.Encode(message);
 
 				sendConnection, _ := net.DialUDP("udp", nil, transmitAddr);

@@ -81,8 +81,8 @@ func slave(broadcastChannel 		  chan network.Message,
 		   elevatorOrderReceiver 	  chan Order,
 		   elevatorEventNewOrder      chan Order) {
 
-	newMasterDestinationOrderRecipient := network.Recipient{ Name : "receiveNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
-	masterCostRequestRecipient  := network.Recipient{ Name : "requestCostOfOrder", 		ReceiveChannel : make(chan network.Message) };
+	newMasterDestinationOrderRecipient 	:= network.Recipient{ ID : "receiveNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
+	masterCostRequestRecipient  		:= network.Recipient{ ID : "requestCostOfOrder", 		ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- newMasterDestinationOrderRecipient;
 	addServerRecipientChannel <- masterCostRequestRecipient;
