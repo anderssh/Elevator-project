@@ -10,9 +10,9 @@ import (
 
 //-----------------------------------------------//
 
-const (
-	NUMBER_OF_FLOORS 	int 		= 4
-)
+const(
+	NUMBER_OF_FLOORS int = 4
+);
 
 //-----------------------------------------------//
 
@@ -26,7 +26,7 @@ func (err *ErrorElevator) Error() string {
 
 //-----------------------------------------------//
 
-var lastReachedFloor 		int 	= -1;
+var lastReachedFloor 	int;
 
 var buttonStop 			ButtonSimple;
 var buttonObstruction 	ButtonSimple;
@@ -104,10 +104,12 @@ func Initialize() *ErrorElevator {
 		return &ErrorElevator{"Failed to initialize hardware."};
 	}
 
+	lastReachedFloor = -1;
+
 	initializeContainerButtonFloor();
 	initializeSimpleButtons();
 
-	for floor := 0; floor < NUMBER_OF_FLOORS ; floor++ {
+	for floor := 0; floor < NUMBER_OF_FLOORS; floor++ {
 		TurnOffAllLightButtonsOnFloor(floor)
 	}
 
