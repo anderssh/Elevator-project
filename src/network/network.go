@@ -10,21 +10,65 @@ import(
 
 //-----------------------------------------------//
 
-type Message struct {
-	RecipientName 	string;
-	Data 			[]byte;
-}
+var IPAddress 	string;
+var port 		int;
 
-type Recipient struct {
-	Name 			string;
-	Channel 		chan []byte;
+func initialize(){
+
+    adresses, err := net.InterfaceAddrs()
+
+    if err != nil {
+        log.Error("Error in finding all Interface adresses")
+    }
+
+    for _, address := range adresses {
+
+          // check the address type and if it is not a loopback the display it
+        if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+            if ipnet.IP.To4() != nil {
+              IPAddress = ipnet.IP.String();
+               }
+         }
+	}
 }
 
 //-----------------------------------------------//
 
+type Message struct {
+	RecipientName 		string;
+	
+	DestinationIPAddr 	string;
+	DestinationPort 	int;
+	
+	SenderIP			string;
+	SenderPort			int;
+	
+	Data 				[]byte;
+}
+
+func MakeMessage (recipientName string, data []byte, destinationIPAddr string, destinationPort int) Message {
+	
+	return 	Message{RecipientName : recipientName, 
+			DestinationIPAddr : destinationIPAddr, 
+			DestinationPort : port,
+			SenderIP : IPAddress,
+			SenderPort : port,
+	 		Data : data}
+}
+
+type Recipient struct {
+	Name 		string;
+	ChannelMessage 	chan Message;
+}
+
+//-----------------------------------------------//
+
+
+
+
 func listen(IPAddr string, port int, messageChannel chan<- Message) {
 
-	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
+	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(port));
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
 
 	defer func() {
@@ -66,7 +110,8 @@ func ListenServer(IPAddr string, port int, addRecipientChannel chan Recipient) {
 				
 				for recipientIndex := range recipients {
 					if message.RecipientName == recipients[recipientIndex].Name {
-						recipients[recipientIndex].Channel <- message.Data;
+						
+						recipients[recipientIndex].ChannelMessage <- message;
 						break;
 					}
 				}
@@ -136,7 +181,7 @@ func ListenServerWithTimeout(IPAddr string, port int, addRecipientChannel chan R
 				
 				for recipientIndex := range recipients {
 					if message.RecipientName == recipients[recipientIndex].Name {
-						recipients[recipientIndex].Channel <- message.Data;
+						recipients[recipientIndex].ChannelMessage <- message;
 						break;
 					}
 				}
