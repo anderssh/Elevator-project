@@ -2,11 +2,13 @@ package elevatorController;
 
 import(
 	. "../typeDefinitions"
+	"../config"
 	"../network"
 	"../encoder/JSON"
 	"../log"
 	"../ordersGlobal"
 	"../ordersUnconfirmed"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -67,6 +69,27 @@ func slaveHandleElevatorCostResponse(cost int, transmitChannel chan network.Mess
 }
 
 //-----------------------------------------------//
+
+func slaveAliveNotifier(transmitChannel chan network.Message) {
+
+	for {
+		message, _ := JSON.Encode("Slave is alive");
+		transmitChannel <- network.MakeMessage("masterSlaveAliveNotification", message, network.BROADCAST_ADDR);
+		time.Sleep(config.SLAVE_ALIVE_NOTIFICATION_DELAY);
+		for i := 1; i < 10; i++ {
+		transmitChannel <- network.MakeMessage("masterSlaveAliveNotification", message, network.BROADCAST_ADDR);
+		time.Sleep(config.SLAVE_ALIVE_NOTIFICATION_DELAY);
+		}
+		time.Sleep(time.Second)
+		for i := 1; i < 10; i++ {
+		transmitChannel <- network.MakeMessage("masterSlaveAliveNotification", message, network.BROADCAST_ADDR);
+		time.Sleep(config.SLAVE_ALIVE_NOTIFICATION_DELAY);
+		}
+		break;
+	}
+}
+
+//-----------------------------------------------//
  
 func slave(transmitChannel 		  	  	chan network.Message,
 		   addServerRecipientChannel  	chan network.Recipient,
@@ -80,6 +103,8 @@ func slave(transmitChannel 		  	  	chan network.Message,
 
 	addServerRecipientChannel <- newDestinationOrderRecipient;
 	addServerRecipientChannel <- costRequestRecipient;
+
+	go slaveAliveNotifier(transmitChannel);
 	
 	for {
 		select {

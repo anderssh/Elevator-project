@@ -150,9 +150,8 @@ func ListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 func listenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
 	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_WITH_TIMEOUT));
-	log.Error(listenAddress)
-	listenConnection, err := net.ListenUDP("udp", listenAddress);
-	log.Error(err)
+	listenConnection, _ := net.ListenUDP("udp", listenAddress);
+	
 	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
 
 	defer func() {
