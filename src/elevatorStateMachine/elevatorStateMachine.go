@@ -25,6 +25,7 @@ const (
 
 var currentState 		State;
 var floorDestination 	int;
+var displaySwitch		bool;
 
 var eventReachedNewFloor 	chan int;
 var eventCloseDoor 			chan bool;
@@ -51,6 +52,8 @@ func Initialize(orderHandlerArg chan Order,
 		log.Error(err);
 	}
 
+	displaySwitch = true;
+
 	eventReachedNewFloor 	= make(chan int);
 	eventCloseDoor 			= make(chan bool);
 	eventStop 				= make(chan bool);
@@ -63,7 +66,7 @@ func Initialize(orderHandlerArg chan Order,
 	eventCostRequest = eventCostRequestArg;
 	costResponseHandler = costResponseHandlerArg
 
-	currentState 	= STATE_STARTUP;
+	currentState 	= STATE_IDLE;
 	floorDestination = -1;
 
 	elevator.DriveInDirection(DIRECTION_DOWN);
@@ -75,80 +78,82 @@ func Display() {
 	
 	//-----------------------------------------------//
 	// Title with state
+	if displaySwitch{
 
-	fmt.Print("ELEVATOR: ");
+		fmt.Print("ELEVATOR: ");
 
-	switch currentState {
-		case STATE_STARTUP:
-			fmt.Println(" (STATE_STARTUP) ");
-		case STATE_IDLE:
-			fmt.Println(" (STATE_IDLE) ");
-		case STATE_MOVING:
-			fmt.Println(" (STATE_MOVING) ");
-		case STATE_DOOR_OPEN:
-			fmt.Println(" (STATE_DOOR_OPEN) ");
-	}
-
-	//-----------------------------------------------//
-
-	for floor := 3; floor >= 0; floor-- {
-
-		//-----------------------------------------------//
-		// Elevator position
-
-		fmt.Print(floor);
-		fmt.Print("|"); // Left wall
-
-		if elevator.GetLastReachedFloor() == floor {
-			fmt.Print("\x1b[33;1m");
-			fmt.Print("+++");
-			fmt.Print("\x1b[0m");
-		} else {
-			fmt.Print("   ");
-		}
-
-		fmt.Print("|"); // Right wall
-
-		if currentState == STATE_DOOR_OPEN && elevator.GetLastReachedFloor() == floor {
-			fmt.Print("->");
-		} else {
-			fmt.Print("  ");
+		switch currentState {
+			case STATE_STARTUP:
+				fmt.Println(" (STATE_STARTUP) ");
+			case STATE_IDLE:
+				fmt.Println(" (STATE_IDLE) ");
+			case STATE_MOVING:
+				fmt.Println(" (STATE_MOVING) ");
+			case STATE_DOOR_OPEN:
+				fmt.Println(" (STATE_DOOR_OPEN) ");
 		}
 
 		//-----------------------------------------------//
-		// Order display
 
-		fmt.Print("\t");
+		for floor := 3; floor >= 0; floor-- {
 
-		if ordersLocal.AlreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
-			fmt.Print("\x1b[31;1m");
-			fmt.Print("O");
-			fmt.Print("\x1b[0m");
-		} else {
-			fmt.Print("O");
+			//-----------------------------------------------//
+			// Elevator position
+
+			fmt.Print(floor);
+			fmt.Print("|"); // Left wall
+
+			if elevator.GetLastReachedFloor() == floor {
+				fmt.Print("\x1b[33;1m");
+				fmt.Print("+++");
+				fmt.Print("\x1b[0m");
+			} else {
+				fmt.Print("   ");
+			}
+
+			fmt.Print("|"); // Right wall
+
+			if currentState == STATE_DOOR_OPEN && elevator.GetLastReachedFloor() == floor {
+				fmt.Print("->");
+			} else {
+				fmt.Print("  ");
+			}
+
+			//-----------------------------------------------//
+			// Order display
+
+			fmt.Print("\t");
+
+			if ordersLocal.AlreadyStored(Order{ Type : ORDER_INSIDE, Floor : floor }) {
+				fmt.Print("\x1b[31;1m");
+				fmt.Print("O");
+				fmt.Print("\x1b[0m");
+			} else {
+				fmt.Print("O");
+			}
+
+			fmt.Print(" ");
+
+			if ordersLocal.AlreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
+				fmt.Print("\x1b[31;1m");
+				fmt.Print("^");
+				fmt.Print("\x1b[0m");
+			} else {
+				fmt.Print("^");
+			}
+
+			fmt.Print(" ");
+
+			if ordersLocal.AlreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
+				fmt.Print("\x1b[31;1m");
+				fmt.Print("_");
+				fmt.Print("\x1b[0m");
+			} else {
+				fmt.Print("_");
+			}
+
+			fmt.Print("\n");
 		}
-
-		fmt.Print(" ");
-
-		if ordersLocal.AlreadyStored(Order{ Type : ORDER_UP, Floor : floor }) {
-			fmt.Print("\x1b[31;1m");
-			fmt.Print("^");
-			fmt.Print("\x1b[0m");
-		} else {
-			fmt.Print("^");
-		}
-
-		fmt.Print(" ");
-
-		if ordersLocal.AlreadyStored(Order{ Type : ORDER_DOWN, Floor : floor }) {
-			fmt.Print("\x1b[31;1m");
-			fmt.Print("_");
-			fmt.Print("\x1b[0m");
-		} else {
-			fmt.Print("_");
-		}
-
-		fmt.Print("\n");
 	}
 }
 

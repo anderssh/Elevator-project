@@ -95,8 +95,12 @@ type Recipient struct {
 func listen(IPAddr string, messageChannel chan<- Message) {
 
 	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
-	listenConnection, _ := net.ListenUDP("udp", listenAddress);
+	listenConnection, err := net.ListenUDP("udp", listenAddress);
 
+	if err != nil{
+		log.Error(err)
+	}
+	
 	defer func() {
 		if errRecovered := recover(); errRecovered != nil {
 			listenConnection.Close();
@@ -239,11 +243,11 @@ func TransmitServer(transmitChannel chan Message) {
 
 //-----------------------------------------------//
 
-func Repeat(transmitChannel chan Message, message Message, repeatCount int, delay time.Duration){
+func Repeat(transmitChannel chan Message, message Message, repeatCount int, delayInMilliseconds int64){
 
 	for i := 0; i < repeatCount; i++ {
 		transmitChannel <- message;
-		time.Sleep(delay);
+		time.Sleep(time.Duration(delayInMilliseconds) *time.Millisecond);
 	}
 
 }

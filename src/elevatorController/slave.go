@@ -26,7 +26,9 @@ func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message,
 
 			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255");
 
-			transmitChannel <- message;
+			network.Repeat(transmitChannel, message, 10, 20);
+
+			//transmitChannel <- message;
 		}
 	}
 }
