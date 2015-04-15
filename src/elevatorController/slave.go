@@ -2,13 +2,11 @@ package elevatorController;
 
 import(
 	. "../typeDefinitions"
-	"../config"
 	"../network"
 	"../encoder/JSON"
 	"../log"
 	"../ordersGlobal"
 	"../ordersUnconfirmed"
-	"time"
 );
 
 //-----------------------------------------------//
@@ -29,7 +27,6 @@ func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message,
 			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255");
 
 			network.Repeat(transmitChannel, message, 10, 20);
-
 		}
 	}
 }
@@ -60,7 +57,6 @@ func slaveHandleCostRequest(message network.Message, elevatorEventCostRequest ch
 	if err != nil {
 		log.Error(err);
 	}
-	
 
 	elevatorEventCostRequest <- order;
 }
@@ -68,29 +64,8 @@ func slaveHandleCostRequest(message network.Message, elevatorEventCostRequest ch
 func slaveHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {
 
 	costEncoded, _ := JSON.Encode(cost);
-	log.Data("Slave: Cost from local", cost)
+	log.Data("Slave: Cost from local", cost);
 	transmitChannel <- network.MakeMessage("masterCostResponse", costEncoded, network.BROADCAST_ADDR);
-}
-
-//-----------------------------------------------//
-
-func slaveAliveNotifier(transmitChannel chan network.Message) {
-
-	for {
-		message, _ := JSON.Encode("Slave is alive");
-		transmitChannel <- network.MakeMessage("masterSlaveAliveNotification", message, network.BROADCAST_ADDR);
-		time.Sleep(config.SLAVE_ALIVE_NOTIFICATION_DELAY);
-		for i := 1; i < 10; i++ {
-		transmitChannel <- network.MakeMessage("masterSlaveAliveNotification", message, network.BROADCAST_ADDR);
-		time.Sleep(config.SLAVE_ALIVE_NOTIFICATION_DELAY);
-		}
-		time.Sleep(time.Second)
-		for i := 1; i < 10; i++ {
-		transmitChannel <- network.MakeMessage("masterSlaveAliveNotification", message, network.BROADCAST_ADDR);
-		time.Sleep(config.SLAVE_ALIVE_NOTIFICATION_DELAY);
-		}
-		break;
-	}
 }
 
 //-----------------------------------------------//
@@ -107,8 +82,6 @@ func slave(transmitChannel 		  	  	chan network.Message,
 
 	addServerRecipientChannel <- newDestinationOrderRecipient;
 	addServerRecipientChannel <- costRequestRecipient;
-
-	go slaveAliveNotifier(transmitChannel);
 	
 	for {
 		select {

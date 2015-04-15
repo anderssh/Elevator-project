@@ -1,7 +1,7 @@
 package elevatorController;
 
 import(
-	//"../typeDefinitions"
+	. "../typeDefinitions"
 	"../network"
 	"../config"
 	"../log"
@@ -27,6 +27,10 @@ var currentState State;
 
 //-----------------------------------------------//
 
+var inactiveDisconnectTimeouts map[string]*time.Timer;
+
+//-----------------------------------------------//
+
 type costBid struct {
 	Value			int
 	SenderIPAddr 	string
@@ -43,30 +47,44 @@ func costBidAddAndSort(costBids []costBid, newCostBid costBid) []costBid{
 			costBidAllreadyInSlice = true;
 		}
 	}
+
 	if (!costBidAllreadyInSlice) {
+		
 		costBids = append(costBids, newCostBid);
+		
 		for costBidIndex := (len(costBids) - 1); costBidIndex > 0; costBidIndex--{
 			
 			tempCostBid := costBids[costBidIndex]
 
 			if (costBids[costBidIndex].Value < costBids[costBidIndex-1].Value) {
 				
-				costBids[costBidIndex] 		= costBids[costBidIndex-1]
+				costBids[costBidIndex] 		= costBids[costBidIndex-1];
 				costBids[costBidIndex-1] 	= tempCostBid;
 			}
 		}
 	}
+
 	return costBids;
 }
+
 //-----------------------------------------------//
+
+var currentlyHandledOrder Order;
 
 func masterHandleEventNewOrder(message network.Message, transmitChannel chan network.Message) {
 	
-	orderEncoded := message.Data;
-	
 	switch currentState {
 		case STATE_IDLE:
+			
 			log.Data("Master: Got new order to distribute")
+
+			orderEncoded := message.Data;
+			err := JSON.Decode(orderEncoded, &currentlyHandledOrder);
+
+			if err != nil {
+				log.Error(err);
+			}
+
 			transmitChannel <- network.MakeMessage("slaveCostRequest", orderEncoded, network.BROADCAST_ADDR);
 
 			currentState = STATE_AWAITING_COST_RESPONSE;
@@ -80,7 +98,6 @@ func masterHandleEventNewOrder(message network.Message, transmitChannel chan net
 		case STATE_INACTIVE:
 	}
 }
-
 
 func masterHandleEventCostResponse(message network.Message, transmitChannel chan network.Message){
 
@@ -99,11 +116,18 @@ func masterHandleEventCostResponse(message network.Message, transmitChannel chan
 			log.Data("Master: Got cost", cost, message.SenderIPAddr);
 
 			newCostBid := costBid{ Value : cost, SenderIPAddr : message.SenderIPAddr }
-			
 			costBids = costBidAddAndSort(costBids, newCostBid);
-
 			log.Data(costBids[0].Value);
 
+			if (len(inactiveDisconnectTimeouts) + 1 == len(costBids)) {
+
+				log.Data("Send destination", currentlyHandledOrder.Floor, currentlyHandledOrder.Type);
+				
+				order, _ := JSON.Encode(currentlyHandledOrder);
+				transmitChannel <- network.MakeMessage("slaveNewDestinationOrder", order, costBids[0].SenderIPAddr)
+
+				currentState = STATE_IDLE;
+			}
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
@@ -115,16 +139,7 @@ func masterHandleEventCostResponse(message network.Message, transmitChannel chan
 
 //-----------------------------------------------//
 
-func masterAliveNotifier(transmitChannel chan network.Message) {
-
-	for {
-		messageContent, _ := JSON.Encode("Master alive");
-		transmitChannel <- network.MakeMessage("masterAliveNotification", messageContent, network.BROADCAST_ADDR);
-		time.Sleep(config.MASTER_ALIVE_NOTIFICATION_DELAY);
-	}
-}
-
-func masterHandleAliveNotification(message network.Message, masterAliveTimeout *time.Timer) {
+func masterHandleActiveNotification(message network.Message, masterActiveNotificationTimeout *time.Timer) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -143,105 +158,121 @@ func masterHandleAliveNotification(message network.Message, masterAliveTimeout *
 
 		case STATE_INACTIVE:
 
-			masterAliveTimeout.Reset(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT);
+			masterActiveNotificationTimeout.Reset(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT);
 	}
 }
 
-func masterHandleMasterDisconnect(masterAliveTimeout *time.Timer) {
+func masterHandleMasterDisconnect(masterActiveNotificationTimeout *time.Timer, eventInactiveDisconnect chan string, eventChangeNotificationRecipientID chan string) {
 
 	switch currentState {
 		case STATE_INACTIVE:
 
-			log.Data("No master, I return from the dead.");
-			masterAliveTimeout.Stop();
-			currentState = STATE_IDLE; 		// Make master
+			log.Data("No master, switch");
+
+			masterActiveNotificationTimeout.Stop();
+			inactiveDisconnectTimeouts = make(map[string]*time.Timer);
+
+			eventChangeNotificationRecipientID <- "masterActiveNotification";
+
+			currentState = STATE_IDLE;
 	}
 }
 
 //-----------------------------------------------//
 
-var slaveDisconnectNotifiers map[string]*time.Timer = make(map[string]*time.Timer);
-
 func masterDisplaySlaves() {
 
-	log.DataWithColor(log.COLOR_RED, "Slaves:");
+	if config.SHOULD_DISPLAY_SLAVES {
 
-	for slaveIP, _ := range slaveDisconnectNotifiers {
-		log.Data(slaveIP);
+		log.DataWithColor(log.COLOR_CYAN, "Slaves:");
+		log.Data(network.GetLocalIPAddr());
+
+		for slaveIP, _ := range inactiveDisconnectTimeouts {
+			log.Data(slaveIP);
+		}
+
+		log.DataWithColor(log.COLOR_CYAN, "-------------------");
 	}
 }
 
-func masterHandleSlaveAliveNotification(message network.Message, eventSlaveDisconnect chan string) {
+func masterHandleInactiveNotification(message network.Message, eventInactiveDisconnect chan string) {
 
-	switch currentState {
-		case STATE_IDLE:
+	_, keyExists := inactiveDisconnectTimeouts[message.SenderIPAddr];
 
-			_, keyExists := slaveDisconnectNotifiers[message.SenderIPAddr];
-
-			if keyExists {
-				
-				slaveDisconnectNotifiers[message.SenderIPAddr].Reset(config.SLAVE_ALIVE_NOTIFICATION_TIMEOUT);
-				log.Data("Slave in list, reset...");
-
-			} else {
-
-				slaveDisconnectNotifiers[message.SenderIPAddr] = time.AfterFunc(config.SLAVE_ALIVE_NOTIFICATION_TIMEOUT, func() {
-					eventSlaveDisconnect <- message.SenderIPAddr;
-				});
-				log.Data("Slave not in list, add...");
-			}
-
-		default:
-
-			_, keyExists := slaveDisconnectNotifiers[message.SenderIPAddr];
-
-			if keyExists {
-				
-				slaveDisconnectNotifiers[message.SenderIPAddr].Reset(config.SLAVE_ALIVE_NOTIFICATION_TIMEOUT);
-				log.Data("Slave in list, reset...");
-			}
+	if keyExists {
+			
+		inactiveDisconnectTimeouts[message.SenderIPAddr].Reset(config.SLAVE_ALIVE_NOTIFICATION_TIMEOUT);
+		log.Data("Inactive in list, reset...");
 	}
 }
 
-func masterHandleSlaveDisconnect(slaveDisconnectIP string) {
+func masterHandleInactiveDisconnect(slaveDisconnectIP string) {
 
+	// Redistribute order of disconnected node
 	log.Data("Disconnected slave", slaveDisconnectIP);
-	delete(slaveDisconnectNotifiers, slaveDisconnectIP);
+	delete(inactiveDisconnectTimeouts, slaveDisconnectIP);
+}
+
+//-----------------------------------------------//
+
+func aliveNotification(transmitChannel chan network.Message, eventChangeNotificationRecipientID chan string) {
+
+	eventTick := time.NewTicker(config.MASTER_ALIVE_NOTIFICATION_DELAY);
+	recipientID := "masterInactiveNotification"; // | masterActiveNotification
+
+	for {
+		select {
+			case <- eventTick.C:
+				
+				message, _ := JSON.Encode("Alive");
+				transmitChannel <- network.MakeMessage(recipientID, message, network.BROADCAST_ADDR);
+			
+			case newRecepientID := <- eventChangeNotificationRecipientID:
+				
+				recipientID = newRecepientID;			
+		}
+	}
 }
 
 //-----------------------------------------------//
 
 func master(transmitChannel chan network.Message, addServerRecipientChannel chan network.Recipient) {
 
-	currentState = STATE_IDLE;
+	currentState = STATE_INACTIVE;
+
+	inactiveDisconnectTimeouts = make(map[string]*time.Timer);
+
 	costBids = make([]costBid, 0, 1);
 
 	//-----------------------------------------------//
 
 	newOrderRecipient 			:= network.Recipient{ ID : "masterNewOrder", 			ReceiveChannel : make(chan network.Message) };
 	costResponseRecipient 		:= network.Recipient{ ID : "masterCostResponse", 		ReceiveChannel : make(chan network.Message) };
-	aliveNotificationRecipient 	:= network.Recipient{ ID : "masterAliveNotification", 	ReceiveChannel : make(chan network.Message) };
+	aliveNotificationRecipient 	:= network.Recipient{ ID : "masterActiveNotification", 	ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- newOrderRecipient;
 	addServerRecipientChannel <- costResponseRecipient;
 	addServerRecipientChannel <- aliveNotificationRecipient;
 
-	slaveAliveNotificationRecipient := network.Recipient{ ID : "masterSlaveAliveNotification", 	ReceiveChannel : make(chan network.Message) };
+	inactiveNotificationRecipient := network.Recipient{ ID : "masterInactiveNotification", 	ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- slaveAliveNotificationRecipient;
+	addServerRecipientChannel <- inactiveNotificationRecipient;
 	
 	//-----------------------------------------------//
 
-	eventSlaveDisconnect := make(chan string);
-	eventMasterDisconnect := make(chan bool);
+	eventInactiveDisconnect 			:= make(chan string);
+	eventActiveNotificationTimeout 		:= make(chan bool);
+	eventChangeNotificationRecipientID 	:= make(chan string);
 
-	masterAliveTimeout := time.AfterFunc(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT, func() {
-		eventMasterDisconnect <- true;
+	masterActiveNotificationTimeout := time.AfterFunc(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT, func() {
+		eventActiveNotificationTimeout <- true;
 	});
 
 	//-----------------------------------------------//
 
-	go masterAliveNotifier(transmitChannel);
+	go aliveNotification(transmitChannel, eventChangeNotificationRecipientID);
+
+	//-----------------------------------------------//
 
 	for {
 		select {
@@ -262,22 +293,23 @@ func master(transmitChannel chan network.Message, addServerRecipientChannel chan
 
 			case message := <- aliveNotificationRecipient.ReceiveChannel:
 
-				masterHandleAliveNotification(message, masterAliveTimeout);
+				masterHandleActiveNotification(message, masterActiveNotificationTimeout);
 
-			case  <- eventMasterDisconnect:
+			case  <- eventActiveNotificationTimeout:
 
-				masterHandleMasterDisconnect(masterAliveTimeout);
+				masterHandleMasterDisconnect(masterActiveNotificationTimeout, eventInactiveDisconnect, eventChangeNotificationRecipientID);
 
 			//-----------------------------------------------//
-			// Slave registration
+			// Inactive registration
 
-			case message := <- slaveAliveNotificationRecipient.ReceiveChannel:
+			case message := <- inactiveNotificationRecipient.ReceiveChannel:
+				
+				masterDisplaySlaves();
+				masterHandleInactiveNotification(message, eventInactiveDisconnect);
 
-				masterHandleSlaveAliveNotification(message, eventSlaveDisconnect);
+			case inactiveDisconnectIP := <- eventInactiveDisconnect:
 
-			case slaveDisconnectIP := <- eventSlaveDisconnect:
-
-				masterHandleSlaveDisconnect(slaveDisconnectIP);
+				masterHandleInactiveDisconnect(inactiveDisconnectIP);
 		}	
 	}
 }

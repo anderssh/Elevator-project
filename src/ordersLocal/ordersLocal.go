@@ -177,17 +177,14 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 	
 	if index == 0 {
 
-		log.Data("Add order first");
 		orders = append([]Order{ order }, orders ... );
 		
 	} else if index >= len(orders) {
 		
-		log.Data("Add order last");
 		orders = append(orders, order);
 
 	} else {
 		
-		log.Data("Add order in the middle somewhere at ", index);
 		orders = append(orders, order);
 
 		// Bubble order down

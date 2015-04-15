@@ -11,5 +11,6 @@ const(
 	SLAVE_ALIVE_NOTIFICATION_DELAY 		time.Duration 	=	time.Millisecond * 40
 	SLAVE_ALIVE_NOTIFICATION_TIMEOUT 	time.Duration 	=	time.Millisecond * 200
 
-	SHOULD_DISPLAY_ELEVATOR 			bool 			= 	true
+	SHOULD_DISPLAY_ELEVATOR 			bool 			= 	false
+	SHOULD_DISPLAY_SLAVES 				bool 			= 	false
 );

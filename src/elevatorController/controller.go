@@ -2,7 +2,7 @@ package elevatorController;
 
 import(
 	. "../typeDefinitions"
-	
+	"../elevatorStateMachine"
 	"../network"
 );
 
@@ -21,20 +21,18 @@ func Initialize() {
 	elevatorOrderReceiver = make(chan Order);
 	elevatorEventNewOrder = make(chan Order);
 
-	elevatorEventCostRequest = make(chan Order);
-	elevatorCostResponseReceiver = make(chan int);
+	elevatorEventCostRequest = make(chan Order, 10);
+	elevatorCostResponseReceiver = make(chan int, 10);
 
-	//elevatorStateMachine.Initialize(elevatorOrderReceiver,
-									//elevatorEventNewOrder,
-									//elevatorEventCostRequest,
-									//elevatorCostResponseReceiver);
+	elevatorStateMachine.Initialize(elevatorOrderReceiver,
+									elevatorEventNewOrder,
+									elevatorEventCostRequest,
+									elevatorCostResponseReceiver);
 }
 
 func Run() {
 
-	//elevatorStateMachine.Run();
-
-	//log.Data("asd")
+	elevatorStateMachine.Run();
 
 	addServerRecipientChannel 	:= make(chan network.Recipient);
 	broadcastChannel 			:= make(chan network.Message);

@@ -67,7 +67,7 @@ func Initialize(orderHandlerArg chan Order,
 	eventCostRequest = eventCostRequestArg;
 	costResponseHandler = costResponseHandlerArg
 
-	currentState 	= STATE_IDLE;
+	currentState 	= STATE_STARTUP;
 	floorDestination = -1;
 
 	elevator.DriveInDirection(DIRECTION_DOWN);
@@ -324,9 +324,11 @@ func handleEventNewOrder(order Order) {
 			}
 	}
 }
+
 //-----------------------------------------------//
 
 func handleEventCostRequest(order Order) {
+	log.Data(currentState)
 	
 	switch currentState {
 		case STATE_STARTUP:
@@ -335,14 +337,17 @@ func handleEventCostRequest(order Order) {
 
 		case STATE_IDLE:
 
+			log.Data("Cost request");
 			costResponseHandler <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 
 		case STATE_MOVING:
-		
+
+			log.Data("Cost request");
 			costResponseHandler <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
 
 		case STATE_DOOR_OPEN:
 
+			log.Data("Cost request");
 			costResponseHandler <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 	}
 }
@@ -384,6 +389,7 @@ func stateMachine() {
 			case order := <- eventCostRequest:
 
 				handleEventCostRequest(order);
+				Display();
 		}
 	}
 }
