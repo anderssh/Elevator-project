@@ -54,7 +54,6 @@ func masterHandleEventNewOrder(message network.Message, transmitChannel chan net
 	}
 }
 
-var 
 func masterHandleEventCostResponse(message network.Message, transmitChannel chan network.Message){
 
 	switch currentState {
@@ -67,8 +66,8 @@ func masterHandleEventCostResponse(message network.Message, transmitChannel chan
 
 			log.Error(err);
 			log.Data("Master: Got cost", cost, message.SenderIPAddr);
-			newCostBid := {Value: = cost, SenderIPAddr, message.SenderIPAddr}
-			costBids = append(costBids, {})
+			newCostBid := costBid{ Value : cost, SenderIPAddr : message.SenderIPAddr }
+			costBids = append(costBids, newCostBid);
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
@@ -99,8 +98,6 @@ func masterHandleAliveNotification(message network.Message) {
 			
 			IPAddrEndingLocal, _ := strconv.Atoi(IPAddrNumbersLocal[3]);
 			IPAddrEndingSender, _ := strconv.Atoi(IPAddrNumbersSender[3]);
-
-			log.Warning(IPAddrEndingLocal, IPAddrEndingSender)
 
 			if IPAddrEndingLocal > IPAddrEndingSender {
 
@@ -148,7 +145,7 @@ func masterHandleAliveNotificationTimeout(message network.Message) {
 
 func master(transmitChannel chan network.Message, addServerRecipientChannel chan network.Recipient) {
 
-	costBids = make([]costBid,0,1);
+	costBids = make([]costBid, 0, 1);
 
 	newOrderRecipient 			:= network.Recipient{ ID : "masterNewOrder", 			ReceiveChannel : make(chan network.Message) };
 	costResponseRecipient 		:= network.Recipient{ ID : "masterCostResponse", 		ReceiveChannel : make(chan network.Message) };

@@ -222,11 +222,11 @@ func ListenServerWithTimeout(IPAddr string, addRecipientChannel chan Recipient, 
 
 //-----------------------------------------------//
 
-func TransmitServer(sendChannel chan Message) {
+func TransmitServer(transmitChannel chan Message) {
 
 	for {
 		select {
-			case message := <- sendChannel:
+			case message := <- transmitChannel:
 
 				transmitAddr, _   := net.ResolveUDPAddr("udp", message.DestinationIPAddr + ":" + strconv.Itoa(message.DestinationPort));
 				encodedMessage, _ := JSON.Encode(message);
@@ -235,4 +235,15 @@ func TransmitServer(sendChannel chan Message) {
 				sendConnection.Write(encodedMessage);
 		}
 	}
+}
+
+//-----------------------------------------------//
+
+func Repeat(transmitChannel chan Message, message Message, repeatCount int, delay time.Duration){
+
+	for i := 0; i < repeatCount; i++ {
+		transmitChannel <- message;
+		time.Sleep(delay);
+	}
+
 }
