@@ -3,6 +3,7 @@ package elevatorStateMachine
 import(
 	. "../typeDefinitions"
 	. "../buttonDefinitions"
+	"../config"
 	"../elevator"
 	"../log"
 	"../ordersLocal"
@@ -76,9 +77,10 @@ func Initialize(orderHandlerArg chan Order,
 
 func Display() {
 	
-	//-----------------------------------------------//
-	// Title with state
-	if displaySwitch{
+	if config.SHOULD_DISPLAY_ELEVATOR {
+
+		//-----------------------------------------------//
+		// Title with state
 
 		fmt.Print("ELEVATOR: ");
 
@@ -354,12 +356,12 @@ func stateMachine() {
 			case floorReached := <- eventReachedNewFloor:
 
 				handleEventReachedNewFloor(floorReached);
-				//Display();
+				Display();
 
 			case <- eventCloseDoor:
 
 				handleEventCloseDoor();
-				//Display();
+				Display();
 
 			case <- eventStop:
 				
@@ -372,12 +374,13 @@ func stateMachine() {
 			case button := <- eventButtonFloorPressed:
 
 				handleEventButtonPressed(button);
-				//Display();
+				Display();
 
 			case order := <- eventNewOrder:
 
 				handleEventNewOrder(order);
-				//Display();
+				Display();
+
 			case order := <- eventCostRequest:
 
 				handleEventCostRequest(order);
