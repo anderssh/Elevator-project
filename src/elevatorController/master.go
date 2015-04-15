@@ -14,13 +14,6 @@ import(
 
 type State int
 
-type costBid struct {
-	Value			int
-	SenderIPAddr 	string
-}
-
-var costBids []costBid;
-
 const (
 	STATE_IDLE   								State = iota
 	STATE_AWAITING_COST_RESPONSE   				State = iota
@@ -31,6 +24,39 @@ const (
 
 var currentState State;
 
+//-----------------------------------------------//
+
+type costBid struct {
+	Value			int
+	SenderIPAddr 	string
+}
+
+var costBids []costBid;
+
+func costBidAddAndSort(costBids []costBid, newCostBid costBid) []costBid{
+	
+	costBidAllreadyInSlice := false;
+
+	for i := 0; i < len(costBids); i++ {
+		if (costBids[i].SenderIPAddr == newCostBid.SenderIPAddr) {
+			costBidAllreadyInSlice = true;
+		}
+	}
+	if (!costBidAllreadyInSlice) {
+		costBids = append(costBids, newCostBid);
+		for costBidIndex := (len(costBids) - 1); costBidIndex > 0; costBidIndex--{
+			
+			tempCostBid := costBids[costBidIndex]
+
+			if (costBids[costBidIndex].Value < costBids[costBidIndex-1].Value) {
+				
+				costBids[costBidIndex] 		= costBids[costBidIndex-1]
+				costBids[costBidIndex-1] 	= tempCostBid;
+			}
+		}
+	}
+	return costBids;
+}
 //-----------------------------------------------//
 
 func masterHandleEventNewOrder(message network.Message, transmitChannel chan network.Message) {
@@ -54,6 +80,7 @@ func masterHandleEventNewOrder(message network.Message, transmitChannel chan net
 	}
 }
 
+
 func masterHandleEventCostResponse(message network.Message, transmitChannel chan network.Message){
 
 	switch currentState {
@@ -64,10 +91,18 @@ func masterHandleEventCostResponse(message network.Message, transmitChannel chan
 			var cost int;
 			err := JSON.Decode(message.Data, &cost);
 
-			log.Error(err);
+			if err != nil{
+				log.Error(err);
+			}
+
 			log.Data("Master: Got cost", cost, message.SenderIPAddr);
+
 			newCostBid := costBid{ Value : cost, SenderIPAddr : message.SenderIPAddr }
-			costBids = append(costBids, newCostBid);
+			
+			costBids = costBidAddAndSort(costBids, newCostBid);
+
+			log.Data(costBids[0].Value);
+
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
