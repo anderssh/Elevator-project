@@ -13,8 +13,14 @@ const (
 	LOG_WARNING		int 	= 		iota
 	LOG_ALL			int 	= 		iota
 
+	COLOR_BLACK 	int 	= 		30
 	COLOR_RED 		int 	= 		31
+	COLOR_GREEN 	int 	= 		32
 	COLOR_YELLOW 	int 	= 		33
+	COLOR_BLUE 		int 	= 		34
+	COLOR_MANGENTA 	int 	= 		35
+	COLOR_CYAN 		int 	= 		36
+	COLOR_WHITE 	int 	= 		37
 );
 
 var logLevel = LOG_ALL;
