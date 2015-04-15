@@ -30,19 +30,15 @@ func GetLocalIPAddr() string {
 
 func Initialize(){
 
-    adresses, err := net.InterfaceAddrs();
-    if err != nil {
-        log.Error("Error in finding all Interface adresses");
-    }
-
-    for _, address := range adresses {
-
-        if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() { 		// check the address type and if it is not a loopback the display it
-            if ipnet.IP.To4() != nil {
-              iPAddr = ipnet.IP.String();
-            }
-        }
-	}
+    discoverAddr, _ := net.ResolveUDPAddr("udp", BROADCAST_ADDR + ":50000");
+    discoverConn, _ := net.DialUDP("udp4", nil, discoverAddr);
+	
+	discoverConnAddr := discoverConn.LocalAddr();
+	localAddr, _ := net.ResolveUDPAddr("udp4", discoverConnAddr.String());
+	
+	iPAddr = localAddr.IP.String();
+	
+	discoverConn.Close();
 }
 
 //-----------------------------------------------//
