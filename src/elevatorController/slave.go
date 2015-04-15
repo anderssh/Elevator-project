@@ -13,7 +13,7 @@ import(
 
 func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewOrder chan Order) {
 	
-	if order.Type == ORDER_INSIDE { 								// Should only be dealt with locally
+	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
 		
 		elevatorEventNewOrder <- order;
 		
@@ -28,7 +28,6 @@ func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message,
 
 			network.Repeat(transmitChannel, message, 10, 20);
 
-			//transmitChannel <- message;
 		}
 	}
 }
@@ -56,7 +55,10 @@ func slaveHandleCostRequest(message network.Message, elevatorEventCostRequest ch
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
 
-	log.Error(err);
+	if err != nil {
+		log.Error(err);
+	}
+	
 
 	elevatorEventCostRequest <- order;
 }
