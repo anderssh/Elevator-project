@@ -63,7 +63,7 @@ func Initialize(orderHandlerArg chan Order,
 	eventCostRequest = eventCostRequestArg;
 	costResponseHandler = costResponseHandlerArg
 
-	currentState 	= STATE_IDLE;
+	currentState 	= STATE_STARTUP;
 	floorDestination = -1;
 
 	elevator.DriveInDirection(DIRECTION_DOWN);

@@ -22,6 +22,12 @@ const (
 
 var iPAddr 	string;
 
+func GetLocalIPAddr() string {
+	return iPAddr;
+}
+
+//-----------------------------------------------//
+
 func Initialize(){
 
     adresses, err := net.InterfaceAddrs();

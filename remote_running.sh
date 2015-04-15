@@ -1,6 +1,6 @@
 #! /bin/bash
 echo "Start copying"
-scp  -r ~/Desktop/Elevator-project anderssh@129.241.187.154:~/Desktop
+scp  -r ~/Desktop/Elevator-project patrickf@129.241.187.143:~/Desktop
 echo "Finished copying"
-ssh anderssh@129.241.187.154
+ssh patrickf@129.241.187.143
 echo "Logged in"
