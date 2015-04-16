@@ -32,11 +32,8 @@ func Remove(order Order) {
 	for orderIndex := range orders {
 		if orders[orderIndex].Type == order.Type && orders[orderIndex].Floor == order.Floor {
 			
-			if (orderIndex == len(orders) - 1) {
-				orders = orders[:(len(orders) - 1)];
-			} else {
-				orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
-			}
+			orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
+			return;
 		}
 	}
 }

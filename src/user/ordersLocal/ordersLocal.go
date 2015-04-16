@@ -54,11 +54,7 @@ func RemoveOnFloor(floor int) {
 
 			if (orders[orderIndex].Floor == floor) {
 
-				if (orderIndex == len(orders) - 1) {
-					orders = orders[:(len(orders) - 1)];
-				} else {
-					orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
-				}
+				orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
 
 			} else {
 				orderIndex = orderIndex + 1;
