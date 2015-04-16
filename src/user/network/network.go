@@ -242,7 +242,6 @@ func Repeat(transmitChannel chan Message, message Message, repeatCount int, dela
 
 	for i := 0; i < repeatCount; i++ {
 		transmitChannel <- message;
-		time.Sleep(time.Duration(delayInMilliseconds) *time.Millisecond);
+		time.Sleep(time.Duration(delayInMilliseconds) * time.Millisecond);
 	}
-
 }

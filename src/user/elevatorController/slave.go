@@ -63,9 +63,9 @@ func slaveHandleCostRequest(message network.Message, elevatorEventCostRequest ch
 
 func slaveHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {
 
-	costEncoded, _ := JSON.Encode(cost);
-	log.Data("Slave: Cost from local", cost);
-	transmitChannel <- network.MakeMessage("masterCostResponse", costEncoded, network.BROADCAST_ADDR);
+	//costEncoded, _ := JSON.Encode(cost);
+	//log.Data("Slave: Cost from local", cost);
+	//transmitChannel <- network.MakeMessage("masterCostResponse", costEncoded, network.BROADCAST_ADDR);
 }
 
 //-----------------------------------------------//
