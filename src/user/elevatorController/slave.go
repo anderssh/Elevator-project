@@ -1,12 +1,12 @@
 package elevatorController;
 
 import(
-	. "../typeDefinitions"
-	"../network"
-	"../encoder/JSON"
-	"../log"
-	"../ordersGlobal"
-	"../ordersUnconfirmed"
+	. "user/typeDefinitions"
+	"user/network"
+	"user/encoder/JSON"
+	"user/log"
+	"user/ordersGlobal"
+	"user/ordersUnconfirmed"
 );
 
 //-----------------------------------------------//

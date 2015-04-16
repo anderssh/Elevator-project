@@ -1,8 +1,7 @@
 package ordersLocal;
 
 import(
-	. "../typeDefinitions"
-	"../log"
+	. "user/typeDefinitions"
 	"math"
 );
 

@@ -1,11 +1,11 @@
 package elevator
 
 import (
-	"../io"
+	"user/io"
 	"time"
-	. "../buttonDefinitions"
-	. "../typeDefinitions"
-	"../log"
+	. "user/buttonDefinitions"
+	. "user/typeDefinitions"
+	"user/log"
 );
 
 //-----------------------------------------------//

@@ -1,7 +1,7 @@
 package ordersGlobal;
 
 import(
-	. "../typeDefinitions"
+	. "user/typeDefinitions"
 );
 
 //-----------------------------------------------//

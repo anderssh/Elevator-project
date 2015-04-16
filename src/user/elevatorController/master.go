@@ -1,12 +1,12 @@
 package elevatorController;
 
 import(
-	. "../typeDefinitions"
-	"../network"
-	"../config"
-	"../log"
+	. "user/typeDefinitions"
+	"user/network"
+	"user/config"
+	"user/log"
 	"time"
-	"../encoder/JSON"
+	"user/encoder/JSON"
 	"strings"
 	"strconv"
 );

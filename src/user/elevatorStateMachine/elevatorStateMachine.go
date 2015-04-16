@@ -1,12 +1,12 @@
 package elevatorStateMachine
 
 import(
-	. "../typeDefinitions"
-	. "../buttonDefinitions"
-	"../config"
-	"../elevator"
-	"../log"
-	"../ordersLocal"
+	. "user/typeDefinitions"
+	. "user/buttonDefinitions"
+	"user/config"
+	"user/elevator"
+	"user/log"
+	"user/ordersLocal"
 	"time"
 	"fmt"
 );

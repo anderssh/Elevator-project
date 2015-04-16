@@ -1,8 +1,8 @@
 package buttonDefinitions;
 
 import(
-	"../io"
-	. "../typeDefinitions"
+	"user/io"
+	. "user/typeDefinitions"
 );
 
 //-----------------------------------------------//

@@ -4,8 +4,8 @@ import(
 	"net"
 	"strconv"
 	"time"
-	"../log"
-	"../encoder/JSON"
+	"user/log"
+	"user/encoder/JSON"
 );
 
 //-----------------------------------------------//

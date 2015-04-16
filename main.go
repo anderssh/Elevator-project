@@ -1,7 +1,7 @@
 package main;
 
 import (
-	"./src/processPairController"
+	"user/processPairController"
 );
 
 func main() {

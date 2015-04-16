@@ -1,7 +1,7 @@
 package ordersUnconfirmed;
 
 import(
-	. "../typeDefinitions"
+	. "user/typeDefinitions"
 );
 
 //-----------------------------------------------//

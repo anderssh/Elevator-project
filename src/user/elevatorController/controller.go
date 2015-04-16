@@ -1,9 +1,9 @@
 package elevatorController;
 
 import(
-	. "../typeDefinitions"
-	"../elevatorStateMachine"
-	"../network"
+	. "user/typeDefinitions"
+	"user/elevatorStateMachine"
+	"user/network"
 );
 
 //-----------------------------------------------//

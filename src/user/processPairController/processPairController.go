@@ -2,11 +2,11 @@ package processPairController;
 
 import(
 	"os"
-	"../elevatorController"
-	"../log"
-	"../network"
+	"user/elevatorController"
+	"user/log"
+	"user/network"
 	"time"
-	"../encoder/JSON"
+	"user/encoder/JSON"
 );
 
 //-----------------------------------------------//
