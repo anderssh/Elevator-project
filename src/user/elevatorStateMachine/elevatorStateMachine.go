@@ -2,7 +2,6 @@ package elevatorStateMachine
 
 import(
 	. "user/typeDefinitions"
-	. "user/buttonDefinitions"
 	"user/config"
 	"user/elevator"
 	"user/log"
