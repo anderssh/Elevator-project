@@ -245,7 +245,7 @@ func UDPTransmitServer(transmitChannel chan Message) {
 
 //-----------------------------------------------//
 
-func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, messageChannel chan<- Message) {
+func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
 
 	messageBuffer := make([]byte, 1024);
 
@@ -261,6 +261,7 @@ func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, mes
 			delete(tcpConnections, remoteAddr);
 			tcpConnectionsMutex.Unlock();
 
+			eventDisconnect <- remoteAddr;
 			return;
 
 		} else {
@@ -275,9 +276,7 @@ func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, mes
 }
 
 
-func tcpListen(IPAddr string, messageChannel chan<- Message) {
-
-	log.DataWithColor(log.COLOR_GREEN, "TCP init");
+func tcpListen(IPAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
 
 	serverAddr, _     		:= net.ResolveTCPAddr("tcp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
 	serverConnection, err 	:= net.ListenTCP("tcp", serverAddr);
@@ -291,23 +290,23 @@ func tcpListen(IPAddr string, messageChannel chan<- Message) {
 		log.DataWithColor(log.COLOR_GREEN, "Waiting for new connect");
 		listenConnection, _ := serverConnection.AcceptTCP();
 		remoteAddr 			:= listenConnection.RemoteAddr().String();
-		log.DataWithColor(log.COLOR_GREEN, remoteAddr)
+		log.DataWithColor(log.COLOR_GREEN, remoteAddr);
 		tcpConnectionsMutex.Lock();
 		tcpConnections[remoteAddr] = listenConnection;
 		tcpConnectionsMutex.Unlock();
 
 		log.DataWithColor(log.COLOR_GREEN, "Connected");
 
-		go tcpListenOnConnection(listenConnection, remoteAddr, messageChannel);
+		go tcpListenOnConnection(listenConnection, remoteAddr, messageChannel, eventDisconnect chan string);
 	}
 }
 
-func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient) {
+func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDisconnect chan string) {
 
 	recipients 		:= make([]Recipient, 0, 1);
 	messageChannel 	:= make(chan Message);
 
-	go tcpListen(IPAddr, messageChannel);
+	go tcpListen(IPAddr, messageChannel, eventDisconnect);
 
 	for {
 		select {
@@ -338,16 +337,16 @@ func tcpConnectTo(remoteAddrRaw string) {
 		log.Error(err);
 	}
 
-	for {
-		
+	for { //BUGBUGBUG
+
 		connection, err := net.DialTCP("tcp", nil, remoteAddr);
 
 		if err != nil {
 			
 			log.Error("Could not dial tcp", remoteAddrRaw, remoteAddr);
 			log.Error(err)
-			time.Sleep(time.Second)
-			// BUGBUG
+			
+			return;
 
 		} else {
 

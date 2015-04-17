@@ -40,9 +40,10 @@ func Run() {
 	transmitChannel 				:= make(chan network.Message);
 	broadcastChannel 				:= make(chan network.Message);
 
+	eventDisconnect 				:= make(chan string);
 	eventChangeMaster 				:= make(chan string);
 
-	go network.TCPListenServer("", addServerRecipientChannel);
+	go network.TCPListenServer("", addServerRecipientChannel, eventDisconnect);
 	go network.TCPTransmitServer(transmitChannel);
 
 	go network.UDPListenServer("", addBroadcastRecipientChannel);
