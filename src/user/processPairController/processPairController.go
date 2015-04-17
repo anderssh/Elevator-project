@@ -27,7 +27,7 @@ func backupProcess() {
 	timeoutTriggerTime 	:= time.Millisecond * ALIVE_MESSAGE_DEADLINE;
 	timeoutNotifier 	:= make(chan bool);
 
-	go network.ListenServerWithTimeout(network.LOCALHOST, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
+	go network.UDPListenServerWithTimeout(network.LOCALHOST, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
 
 	addServerRecipientChannel <- aliveRecipient;
 
@@ -51,7 +51,7 @@ func masterProcessAliveNotification() {
 	
 	aliveTransmitChannel := make(chan network.Message);
 
-	go network.TransmitServer(aliveTransmitChannel);
+	go network.UDPTransmitServer(aliveTransmitChannel);
 
 	for {
 		time.Sleep(time.Millisecond * ALIVE_NOTIFICATION_DELAY);
@@ -64,7 +64,7 @@ func masterProcess() {
 
 	elevatorController.Initialize();
 
-	go masterProcessAliveNotification();
+	//go masterProcessAliveNotification();
 	go elevatorController.Run();
 }
 

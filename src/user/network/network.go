@@ -4,6 +4,7 @@ import(
 	"net"
 	"strconv"
 	"time"
+	"sync"
 	"user/log"
 	"user/encoder/JSON"
 );
@@ -28,6 +29,9 @@ func GetLocalIPAddr() string {
 
 //-----------------------------------------------//
 
+var tcpConnections 			map[string]*net.TCPConn;
+var tcpConnectionsMutex 	*sync.Mutex;
+
 func Initialize(){
 
     discoverAddr, _ := net.ResolveUDPAddr("udp", BROADCAST_ADDR + ":50000");
@@ -39,6 +43,9 @@ func Initialize(){
 	iPAddr = localAddr.IP.String();
 	
 	discoverConn.Close();
+
+	tcpConnections 		= make(map[string]*net.TCPConn);
+	tcpConnectionsMutex = &sync.Mutex{};
 }
 
 //-----------------------------------------------//
@@ -88,7 +95,7 @@ type Recipient struct {
 
 //-----------------------------------------------//
 
-func listen(IPAddr string, messageChannel chan<- Message) {
+func udpListen(IPAddr string, messageChannel chan<- Message) {
 
 	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
 	listenConnection, err := net.ListenUDP("udp", listenAddress);
@@ -123,12 +130,12 @@ func listen(IPAddr string, messageChannel chan<- Message) {
 	}
 }
 
-func ListenServer(IPAddr string, addRecipientChannel chan Recipient) {
+func UDPListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 
 	recipients 		:= make([]Recipient, 1);
 	messageChannel 	:= make(chan Message);
 
-	go listen(IPAddr, messageChannel);
+	go udpListen(IPAddr, messageChannel);
 
 	for {
 		select {
@@ -151,7 +158,7 @@ func ListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 
 //-----------------------------------------------//
 
-func listenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
+func udpListenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
 	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_WITH_TIMEOUT));
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
@@ -194,12 +201,12 @@ func listenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDur
 	}
 }
 
-func ListenServerWithTimeout(IPAddr string, addRecipientChannel chan Recipient, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
+func UDPListenServerWithTimeout(IPAddr string, addRecipientChannel chan Recipient, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
 	recipients 		:= make([]Recipient, 1);
 	messageChannel 	:= make(chan Message);
 
-	go listenWithTimeout(IPAddr, messageChannel, deadlineDuration, timeoutNotifier);
+	go udpListenWithTimeout(IPAddr, messageChannel, deadlineDuration, timeoutNotifier);
 
 	for {
 		select {
@@ -221,7 +228,7 @@ func ListenServerWithTimeout(IPAddr string, addRecipientChannel chan Recipient, 
 
 //-----------------------------------------------//
 
-func TransmitServer(transmitChannel chan Message) {
+func UDPTransmitServer(transmitChannel chan Message) {
 
 	for {
 		select {
@@ -232,6 +239,153 @@ func TransmitServer(transmitChannel chan Message) {
 
 				sendConnection, _ := net.DialUDP("udp", nil, transmitAddr);
 				sendConnection.Write(encodedMessage);
+		}
+	}
+}
+
+//-----------------------------------------------//
+
+func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, messageChannel chan<- Message) {
+
+	messageBuffer := make([]byte, 1024);
+
+	for {
+		messageLength, err := listenConnection.Read(messageBuffer);
+	
+		if err != nil || messageLength < 0 {
+
+			log.Error("Error when reading from TCP.");
+
+			tcpConnectionsMutex.Lock();
+			listenConnection.Close();
+			delete(tcpConnections, remoteAddr);
+			tcpConnectionsMutex.Unlock();
+
+			return;
+
+		} else {
+
+			var decodedMessage Message;
+			originalMessage := messageBuffer[0:messageLength];
+			JSON.Decode(originalMessage, &decodedMessage);
+
+			messageChannel <- decodedMessage;
+		}
+	}
+}
+
+
+func tcpListen(IPAddr string, messageChannel chan<- Message) {
+
+	log.DataWithColor(log.COLOR_GREEN, "TCP init");
+
+	serverAddr, _     		:= net.ResolveTCPAddr("tcp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
+	serverConnection, err 	:= net.ListenTCP("tcp", serverAddr);
+	
+	if err != nil{
+		log.Error(err)
+	}
+
+	for {
+
+		log.DataWithColor(log.COLOR_GREEN, "Waiting for new connect");
+		listenConnection, _ := serverConnection.AcceptTCP();
+		remoteAddr 			:= listenConnection.RemoteAddr().String();
+
+		tcpConnectionsMutex.Lock();
+		tcpConnections[remoteAddr] = listenConnection;
+		tcpConnectionsMutex.Unlock();
+
+		log.DataWithColor(log.COLOR_GREEN, "Connected");
+
+		go tcpListenOnConnection(listenConnection, remoteAddr, messageChannel);
+	}
+}
+
+func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient) {
+
+	recipients 		:= make([]Recipient, 0, 1);
+	messageChannel 	:= make(chan Message);
+
+	go tcpListen(IPAddr, messageChannel);
+
+	for {
+		select {
+			case message := <- messageChannel:
+				
+				for recipientIndex := range recipients {
+					if message.RecipientID == recipients[recipientIndex].ID {
+						
+						recipients[recipientIndex].ReceiveChannel <- message;
+						break;
+					}
+				}
+
+			case newRecipient := <- addRecipientChannel:
+				
+				recipients = append(recipients, newRecipient);
+		}
+	}
+}
+
+//-----------------------------------------------//
+
+func tcpConnectTo(remoteAddrRaw string) {
+
+	remoteAddr, err := net.ResolveTCPAddr("tcp", remoteAddrRaw + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	for {
+		connection, err := net.DialTCP("tcp", nil, remoteAddr);
+
+		if err != nil {
+			
+			log.Error("Could not dial tcp", remoteAddrRaw, remoteAddr);
+			log.Error(err)
+			time.Sleep(time.Second)
+			// BUGBUG
+
+		} else {
+
+			tcpConnectionsMutex.Lock();
+			tcpConnections[remoteAddrRaw] = connection;
+			tcpConnectionsMutex.Unlock();
+
+			return;
+		}
+	}
+}
+
+func TCPTransmitServer(transmitChannel chan Message) {
+
+	for {
+		select {
+			case message := <- transmitChannel:
+
+				_, connectionExists := tcpConnections[message.DestinationIPAddr];
+
+				if !connectionExists {
+					log.Data(message)
+					tcpConnectTo(message.DestinationIPAddr);
+				}
+
+				tcpConnectionsMutex.Lock();
+
+				sendConnection, _ := tcpConnections[message.DestinationIPAddr];
+				encodedMessage, _ := JSON.Encode(message);
+				n, err 			  :=sendConnection.Write(encodedMessage);
+
+				tcpConnectionsMutex.Unlock();
+
+				if err != nil || n < 0 {
+					tcpConnectionsMutex.Lock();
+					sendConnection.Close();
+					delete(tcpConnections, message.DestinationIPAddr);
+					tcpConnectionsMutex.Unlock();
+				}
 		}
 	}
 }

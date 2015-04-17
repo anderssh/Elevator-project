@@ -273,7 +273,7 @@ func aliveNotification(transmitChannel chan network.Message, eventChangeNotifica
 			case <- eventTick.C:
 				
 				message, _ := JSON.Encode("Alive");
-				transmitChannel <- network.MakeMessage(recipientID, message, network.BROADCAST_ADDR);
+				transmitChannel <- network.MakeMessage(recipientID, message, network.LOCALHOST);
 			
 			case newRecepientID := <- eventChangeNotificationRecipientID:
 				

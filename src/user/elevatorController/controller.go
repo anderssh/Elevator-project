@@ -35,11 +35,11 @@ func Run() {
 	elevatorStateMachine.Run();
 
 	addServerRecipientChannel 	:= make(chan network.Recipient);
-	broadcastChannel 			:= make(chan network.Message);
+	transmitChannel 			:= make(chan network.Message);
 
-	go network.ListenServer("", addServerRecipientChannel);
-	go network.TransmitServer(broadcastChannel);
+	go network.TCPListenServer("", addServerRecipientChannel);
+	go network.TCPTransmitServer(transmitChannel);
 
-	go master(broadcastChannel, addServerRecipientChannel);
-	go slave(broadcastChannel, addServerRecipientChannel, elevatorOrderReceiver, elevatorEventNewOrder, elevatorEventCostRequest, elevatorCostResponseReceiver);
+	go master(transmitChannel, addServerRecipientChannel);
+	go slave(transmitChannel, addServerRecipientChannel, elevatorOrderReceiver, elevatorEventNewOrder, elevatorEventCostRequest, elevatorCostResponseReceiver);
 }
