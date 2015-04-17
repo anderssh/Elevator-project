@@ -14,5 +14,5 @@ const(
 	TIMEOUT_TIME_COST_RESPONSE 			time.Duration 	=	time.Millisecond * 200	
 
 	SHOULD_DISPLAY_ELEVATOR 			bool 			= 	false
-	SHOULD_DISPLAY_SLAVES 				bool 			= 	false
+	SHOULD_DISPLAY_WORKERS				bool 			= 	true
 );

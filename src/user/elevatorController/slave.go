@@ -11,6 +11,10 @@ import(
 
 //-----------------------------------------------//
 
+var masterIPAddr string;
+
+//-----------------------------------------------//
+
 func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewOrder chan Order) {
 	
 	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
@@ -24,9 +28,7 @@ func slaveHandleEventNewOrder(order Order, transmitChannel chan network.Message,
 			ordersUnconfirmed.Add(order);
 			orderEncoded, _ := JSON.Encode(order);
 
-			message := network.MakeMessage("masterNewOrder", orderEncoded, "255.255.255.255");
-
-			network.Repeat(transmitChannel, message, 10, 20);
+			transmitChannel <- network.MakeMessage("masterNewOrder", orderEncoded, masterIPAddr);
 		}
 	}
 }
@@ -64,8 +66,8 @@ func slaveHandleCostRequest(message network.Message, elevatorEventCostRequest ch
 func slaveHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {
 
 	costEncoded, _ := JSON.Encode(cost);
-	log.Data("Slave: Cost from local", cost);
-	transmitChannel <- network.MakeMessage("masterCostResponse", costEncoded, network.LOCALHOST);
+	log.Data("Slave: Cost from local is", cost);
+	transmitChannel <- network.MakeMessage("masterCostResponse", costEncoded, masterIPAddr);
 }
 
 //-----------------------------------------------//
@@ -75,13 +77,16 @@ func slave(transmitChannel 		  	  	chan network.Message,
 		   elevatorOrderReceiver 	  	chan Order,
 		   elevatorEventNewOrder      	chan Order,
 		   elevatorEventCostRequest   	chan Order,
-		   elevatorCostResponseReceiver	chan int) {
+		   elevatorCostResponseReceiver	chan int,
+		   eventChangeMaster 			chan string) {
 
 	newDestinationOrderRecipient := network.Recipient{ ID : "slaveNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
 	costRequestRecipient 		 := network.Recipient{ ID : "slaveCostRequest", ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- newDestinationOrderRecipient;
 	addServerRecipientChannel <- costRequestRecipient;
+
+	masterIPAddr = network.GetLocalIPAddr();
 	
 	for {
 		select {
@@ -100,6 +105,11 @@ func slave(transmitChannel 		  	  	chan network.Message,
 			case cost := <- elevatorCostResponseReceiver:
 
 				slaveHandleElevatorCostResponse(cost, transmitChannel);
+
+			case newMasterIPAddr := <- eventChangeMaster:
+
+				log.Data("Slave: I have a new master now", newMasterIPAddr);
+				masterIPAddr = newMasterIPAddr;
 		}
 	}
 }

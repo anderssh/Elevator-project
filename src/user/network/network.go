@@ -291,7 +291,7 @@ func tcpListen(IPAddr string, messageChannel chan<- Message) {
 		log.DataWithColor(log.COLOR_GREEN, "Waiting for new connect");
 		listenConnection, _ := serverConnection.AcceptTCP();
 		remoteAddr 			:= listenConnection.RemoteAddr().String();
-
+		log.DataWithColor(log.COLOR_GREEN, remoteAddr)
 		tcpConnectionsMutex.Lock();
 		tcpConnections[remoteAddr] = listenConnection;
 		tcpConnectionsMutex.Unlock();
@@ -339,6 +339,7 @@ func tcpConnectTo(remoteAddrRaw string) {
 	}
 
 	for {
+		
 		connection, err := net.DialTCP("tcp", nil, remoteAddr);
 
 		if err != nil {
