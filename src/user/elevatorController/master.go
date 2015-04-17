@@ -31,25 +31,25 @@ var inactiveDisconnectTimeouts map[string]*time.Timer;
 
 //-----------------------------------------------//
 
-type costBid struct {
+type CostBid struct {
 	Value			int
 	SenderIPAddr 	string
 }
 
-var costBids []costBid;
+var costBids []CostBid;
 
-func costBidAllreadyStored(costBid Costbid){
+func costBidAllreadyStored(costBid CostBid) bool {
 		
-		for costBidIndex := 0 ; costBidIndex < len(costBids); costBidIndex++{
-			if (costBids[costBidIndex].SenderIPAddr == costBid.SenderIPAddr) {
-				return true;
-			}
+	for costBidIndex := 0 ; costBidIndex < len(costBids); costBidIndex++{
+		if (costBids[costBidIndex].SenderIPAddr == costBid.SenderIPAddr) {
+			return true;
 		}
-		
-		return false;
+	}
+	
+	return false;
 }
 
-func costBidAddAndSort(costBids []costBid, newCostBid costBid) []costBid{
+func costBidAddAndSort(newCostBid CostBid) {
 	
 	costBids = append(costBids, newCostBid);
 		
@@ -63,8 +63,6 @@ func costBidAddAndSort(costBids []costBid, newCostBid costBid) []costBid{
 			costBids[costBidIndex-1] 	= tempCostBid;
 		}
 	}
-
-	return costBids;
 }
 
 //-----------------------------------------------//
@@ -119,10 +117,10 @@ func masterHandleEventCostResponse(message network.Message, transmitChannel chan
 
 			log.Data("Master: Got cost", cost, message.SenderIPAddr);
 
-			newCostBid := costBid{ Value : cost, SenderIPAddr : message.SenderIPAddr };
+			newCostBid := CostBid{ Value : cost, SenderIPAddr : message.SenderIPAddr };
 
-			if (!(costBidAllreadyStored(newCostBid))) {
-				costBids = costBidAddAndSort(costBids, newCostBid);
+			if !costBidAllreadyStored(newCostBid) {
+				costBidAddAndSort(newCostBid);
 			}
 
 			if (len(inactiveDisconnectTimeouts) + 1 == len(costBids)) {
@@ -153,7 +151,7 @@ func masterHandleEventTimeoutCostResponse() {
 
 			log.Data("Timeout, all participants must be involved. Reset...");
 			
-			costBids = make([]costBid, 0, 1);
+			costBids = make([]CostBid, 0, 1);
 
 			currentState = STATE_IDLE;
 	}
@@ -161,7 +159,7 @@ func masterHandleEventTimeoutCostResponse() {
 
 //-----------------------------------------------//
 
-func masterHandleEventOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message, timeoutOrderTakenConfirmation *time.Timer) {
+func masterHandleEventOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -170,7 +168,7 @@ func masterHandleEventOrderTakenConfirmation(message network.Message, transmitCh
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
-			var takenOrder order;
+			var takenOrder Order;
 
 			err := JSON.Decode(message.Data, &takenOrder);
 
@@ -178,14 +176,15 @@ func masterHandleEventOrderTakenConfirmation(message network.Message, transmitCh
 				log.Error(err);
 			}
 
-			log("master: Got order taken Confirmation")
+			log.Data("master: Got order taken Confirmation")
+
+			
 		case STATE_AWAITING_DATA_COLLECTION:
 
 		case STATE_INACTIVE:
 	}
 }
 
-}
 //-----------------------------------------------//
 
 func masterHandleActiveNotification(message network.Message, timeoutMasterActiveNotification *time.Timer) {
@@ -291,7 +290,7 @@ func master(transmitChannel chan network.Message, addServerRecipientChannel chan
 
 	inactiveDisconnectTimeouts = make(map[string]*time.Timer);
 
-	costBids = make([]costBid, 0, 1);
+	costBids = make([]CostBid, 0, 1);
 
 	//-----------------------------------------------//
 
@@ -355,7 +354,7 @@ func master(transmitChannel chan network.Message, addServerRecipientChannel chan
 
 			case message := <- orderTakenConfirmationRecipient.ReceiveChannel:
 
-				masterHandleEventOrderTakenConfirmation(message, transmitChannel, timeoutOrderTakenConfirmation)
+				masterHandleEventOrderTakenConfirmation(message, transmitChannel);
 
 			//-----------------------------------------------//
 			// Master switching
