@@ -48,7 +48,7 @@ func Run() {
 	eventDisconnect 				:= make(chan string);
 
 	go network.TCPListenServer("", addServerRecipientChannel, eventDisconnect);
-	go network.TCPTransmitServer(transmitChannel);
+	go network.TCPTransmitServer(transmitChannel, eventDisconnect);
 
 	go network.UDPListenServer("", addBroadcastRecipientChannel);
 	go network.UDPTransmitServer(broadcastChannel);
@@ -79,7 +79,7 @@ func Run() {
 	addServerRecipientChannel <- distributorMergeRequestRecipient;
 	addServerRecipientChannel <- distributorMergeDataRecipient;
 
-	//-----------------------------------------------//
+	//------------------------------	-----------------//
 
 	distributorActiveNotificationRecipient := network.Recipient{ ID : "distributorActiveNotification", 		ReceiveChannel : make(chan network.Message) };
 
@@ -143,6 +143,10 @@ func Run() {
 
 			//-----------------------------------------------//
 			// Distributor switching
+
+			case disconnectIPAddr := <- eventDisconnect:
+
+				distributorHandleConnectionDisconnect(disconnectIPAddr);
 
 			case <- eventDistributorActiveNotificationTicker.C:
 
