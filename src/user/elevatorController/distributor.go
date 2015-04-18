@@ -172,12 +172,14 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 			var takenOrder Order;
 			err := JSON.Decode(message.Data, &takenOrder);
 
-			if err != nil{
+			if err != nil {
 				log.Error(err, "Decode error");
 			}
 
 			// Distribute to others for global storage
-
+			for costBidIndex := 1; costBidIndex < len(costBids); costBidIndex++ {
+				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", message.Data, costBids[costBidIndex].SenderIPAddr);
+			}
 
 			// Clean up
 			costBids = make([]CostBid, 0, 1);

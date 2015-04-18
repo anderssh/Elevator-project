@@ -35,14 +35,16 @@ func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message
 
 func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewOrder chan Order) {
 	
-	log.Data("Worker: Got new desitination order")
+	log.Data("Worker: Got new desitination order");
 
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
 
 	if err != nil {}
 
-	ordersUnconfirmed.Remove(order);
+	if ordersUnconfirmed.AlreadyStored(order) {
+		ordersUnconfirmed.Remove(order);
+	}
 
 	if !ordersGlobal.AlreadyStored(order) {
 		ordersGlobal.Add(order);
@@ -53,9 +55,31 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 	transmitChannel <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
 
+func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
+
+	log.Data("Worker: Some has taken a order");
+
+	var order Order;
+	err := JSON.Decode(message.Data, &order);
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	if ordersUnconfirmed.AlreadyStored(order) {
+		ordersUnconfirmed.Remove(order);
+	}
+
+	if !ordersGlobal.AlreadyStored(order) {
+		ordersGlobal.Add(order);
+	}
+}
+
+//-----------------------------------------------//
+
 func workerHandleCostRequest(message network.Message, elevatorEventCostRequest chan Order) {
 	
-	log.Data("Worker: Got request for cost of order")
+	log.Data("Worker: Got request for cost of order");
 
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
@@ -74,6 +98,8 @@ func workerHandleElevatorCostResponse(cost int, transmitChannel chan network.Mes
 	costEncoded, _ := JSON.Encode(cost);
 	transmitChannel <- network.MakeMessage("distributorCostResponse", costEncoded, distributorIPAddr);
 }
+
+//-----------------------------------------------//
 
 func workerHandleDistributorChange(message network.Message) {
 

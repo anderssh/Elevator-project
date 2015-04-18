@@ -102,9 +102,11 @@ func Run() {
 
 	workerNewDestinationOrderRecipient 	:= network.Recipient{ ID : "workerNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
 	workerCostRequestRecipient 		   	:= network.Recipient{ ID : "workerCostRequest", 		ReceiveChannel : make(chan network.Message) };
+	workerDestinationOrderTakenBySomeoneRecipient 			:= network.Recipient{ ID : "workerOrderTaken", 		ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- workerNewDestinationOrderRecipient;
 	addServerRecipientChannel <- workerCostRequestRecipient;
+	addServerRecipientChannel <- workerDestinationOrderTakenBySomeoneRecipient;
 
 	workerChangeDistributor 		   	:= network.Recipient{ ID : "workerChangeDistributor", 		ReceiveChannel : make(chan network.Message) };
 
@@ -196,6 +198,10 @@ func Run() {
 				
 				workerHandleNewDestinationOrder(transmitChannel, message, elevatorEventNewOrder);
 			
+			case message := <- workerDestinationOrderTakenBySomeoneRecipient.ReceiveChannel:
+
+				workerHandleDestinationOrderTakenBySomeone(message);
+
 			//-----------------------------------------------//
 
 			case message := <- workerChangeDistributor.ReceiveChannel:
