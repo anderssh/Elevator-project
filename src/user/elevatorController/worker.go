@@ -33,7 +33,7 @@ func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message
 	}
 }
 
-func workerHandleEventNewDestinationOrder(message network.Message, elevatorEventNewOrder chan Order) {
+func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewOrder chan Order) {
 	
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
@@ -47,6 +47,8 @@ func workerHandleEventNewDestinationOrder(message network.Message, elevatorEvent
 	}
 
 	elevatorEventNewOrder <- order;
+
+	transmitChannel <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
 
 func workerHandleCostRequest(message network.Message, elevatorEventCostRequest chan Order) {

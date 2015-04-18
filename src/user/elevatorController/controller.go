@@ -124,15 +124,17 @@ func Run() {
 			case message := <- distributorNewOrderRecipient.ReceiveChannel:
 
 				distributorDisplayWorkers();
-				distributorHandleEventNewOrder(message, transmitChannel);
+				distributorHandleNewOrder(message, transmitChannel);
 			
 			case message := <- distributorCostResponseRecipient.ReceiveChannel:
 
-				distributorHandleEventCostResponse(message, transmitChannel);
+				distributorDisplayWorkers();
+				distributorHandleCostResponse(message, transmitChannel);
 
 			case message := <- distributorOrderTakenConfirmationRecipient.ReceiveChannel:
 
-				distributorHandleEventOrderTakenConfirmation(message, transmitChannel);
+				distributorDisplayWorkers();
+				distributorHandleOrderTakenConfirmation(message, transmitChannel);
 
 			//-----------------------------------------------//
 			// Distributor switching
@@ -166,13 +168,12 @@ func Run() {
 			//-----------------------------------------------//
 			//-----------------------------------------------//
 			
+			//-----------------------------------------------//
+			// Orders 
+
 			case order := <- workerOrderFromElevatorReceiver:
 				
 				workerHandleEventNewOrder(order, transmitChannel, elevatorEventNewOrder);
-			
-			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
-				
-				workerHandleEventNewDestinationOrder(message, elevatorEventNewOrder);
 			
 			case message := <- workerCostRequestRecipient.ReceiveChannel:
 				
@@ -181,6 +182,12 @@ func Run() {
 			case cost := <- workerCostResponseFromElevatorReceiver:
 
 				workerHandleElevatorCostResponse(cost, transmitChannel);
+
+			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
+				
+				workerHandleNewDestinationOrder(transmitChannel, message, elevatorEventNewOrder);
+			
+			//-----------------------------------------------//
 
 			case newDistributorIPAddr := <- eventChangeDistributor:
 

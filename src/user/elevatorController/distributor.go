@@ -19,6 +19,7 @@ const (
 	STATE_IDLE   								State = iota
 	STATE_AWAITING_COST_RESPONSE   				State = iota
 	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
+
 	STATE_INACTIVE 								State = iota
 );
 
@@ -87,9 +88,9 @@ func costBidAddAndSort(newCostBid CostBid) {
 //-----------------------------------------------//
 // Order handling
 
-var currentlyHandledOrder Order;
+var currentlyHandledOrder Order = Order{ -1, -1 };
 
-func distributorHandleEventNewOrder(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleNewOrder(message network.Message, transmitChannel chan network.Message) {
 	
 	switch currentState {
 		case STATE_IDLE:
@@ -116,7 +117,7 @@ func distributorHandleEventNewOrder(message network.Message, transmitChannel cha
 	}
 }
 
-func distributorHandleEventCostResponse(message network.Message, transmitChannel chan network.Message){
+func distributorHandleCostResponse(message network.Message, transmitChannel chan network.Message){
 
 	switch currentState {
 		case STATE_IDLE:
@@ -145,7 +146,7 @@ func distributorHandleEventCostResponse(message network.Message, transmitChannel
 				order, _ := JSON.Encode(currentlyHandledOrder);
 				transmitChannel <- network.MakeMessage("workerNewDestinationOrder", order, costBids[0].SenderIPAddr);
 
-				currentState = STATE_IDLE;
+				currentState = STATE_AWAITING_ORDER_TAKEN_CONFIRMATION;
 			}
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
@@ -155,7 +156,7 @@ func distributorHandleEventCostResponse(message network.Message, transmitChannel
 
 //-----------------------------------------------//
 
-func distributorHandleEventOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -164,17 +165,23 @@ func distributorHandleEventOrderTakenConfirmation(message network.Message, trans
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
-			var takenOrder Order;
+			log.Data("Distributor: Got order taken Confirmation")
 
+			var takenOrder Order;
 			err := JSON.Decode(message.Data, &takenOrder);
 
 			if err != nil{
 				log.Error(err, "Decode error");
 			}
 
-			log.Data("Distributor: Got order taken Confirmation")
+			// Distribute to others for global storage
+			
 
-		
+			// Clean up
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			currentState = STATE_IDLE;
 	}
 }
 
