@@ -297,7 +297,7 @@ func tcpListen(IPAddr string, messageChannel chan<- Message, eventDisconnect cha
 
 		log.DataWithColor(log.COLOR_GREEN, "Connected");
 
-		go tcpListenOnConnection(listenConnection, remoteAddr, messageChannel, eventDisconnect chan string);
+		go tcpListenOnConnection(listenConnection, remoteAddr, messageChannel, eventDisconnect);
 	}
 }
 
