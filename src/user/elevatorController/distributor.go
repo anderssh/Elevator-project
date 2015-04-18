@@ -198,6 +198,17 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 }
 
 //-----------------------------------------------//
+
+func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitChannel chan network.Message) {
+
+	log.Data("Distributor: orders on floor executed by someone");
+
+	for worker := range workerIPAddrs {
+		transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloor", message.Data, workerIPAddrs[worker]);
+	}
+}
+
+//-----------------------------------------------//
 // Merging
 
 func distributorHandleConnectionDisconnect(disconnectIPAddr string) {

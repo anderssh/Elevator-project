@@ -11,7 +11,8 @@ import(
 //-----------------------------------------------//
 
 var workerOrderFromElevatorReceiver chan Order;
-var workerCostResponseFromElevatorReceiver chan int;
+var workerCostResponseFromElevator chan int;
+var workerOrdersExecutedOnFloor chan int;
 
 var elevatorEventNewOrder chan Order;
 var elevatorEventCostRequest chan Order;
@@ -24,12 +25,14 @@ func Initialize() {
 	elevatorEventNewOrder = make(chan Order);
 
 	elevatorEventCostRequest = make(chan Order, 10);
-	workerCostResponseFromElevatorReceiver = make(chan int, 10);
+	workerCostResponseFromElevator = make(chan int, 10);
+	workerOrdersExecutedOnFloor = make(chan int);
 
 	elevatorStateMachine.Initialize(workerOrderFromElevatorReceiver,
 									elevatorEventNewOrder,
 									elevatorEventCostRequest,
-									workerCostResponseFromElevatorReceiver);
+									workerCostResponseFromElevator,
+									workerOrdersExecutedOnFloor);
 }
 
 func Run() {
@@ -68,10 +71,12 @@ func Run() {
 	distributorNewOrderRecipient 				:= network.Recipient{ ID : "distributorNewOrder", 				ReceiveChannel : make(chan network.Message) };
 	distributorCostResponseRecipient 			:= network.Recipient{ ID : "distributorCostResponse", 			ReceiveChannel : make(chan network.Message) };
 	distributorOrderTakenConfirmationRecipient  := network.Recipient{ ID : "distributorOrderTakenConfirmation", ReceiveChannel : make(chan network.Message) };
+	distributorOrdersExecutedOnFloorRecipient  	:= network.Recipient{ ID : "distributorOrdersExecutedOnFloor", 	ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- distributorNewOrderRecipient;
 	addServerRecipientChannel <- distributorCostResponseRecipient;
 	addServerRecipientChannel <- distributorOrderTakenConfirmationRecipient;
+	addServerRecipientChannel <- distributorOrdersExecutedOnFloorRecipient;
 
 	distributorMergeRequestRecipient 			:= network.Recipient{ ID : "distributorMergeRequest", 			ReceiveChannel : make(chan network.Message) };
 	distributorMergeDataRecipient 				:= network.Recipient{ ID : "distributorMergeData", 				ReceiveChannel : make(chan network.Message) };
@@ -100,9 +105,9 @@ func Run() {
 	//-----------------------------------------------//
 	// Worker setup
 
-	workerNewDestinationOrderRecipient 	:= network.Recipient{ ID : "workerNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
-	workerCostRequestRecipient 		   	:= network.Recipient{ ID : "workerCostRequest", 		ReceiveChannel : make(chan network.Message) };
-	workerDestinationOrderTakenBySomeoneRecipient 			:= network.Recipient{ ID : "workerOrderTaken", 		ReceiveChannel : make(chan network.Message) };
+	workerNewDestinationOrderRecipient 				:= network.Recipient{ ID : "workerNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
+	workerCostRequestRecipient 		   				:= network.Recipient{ ID : "workerCostRequest", 		ReceiveChannel : make(chan network.Message) };
+	workerDestinationOrderTakenBySomeoneRecipient 	:= network.Recipient{ ID : "workerOrderTaken", 		ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- workerNewDestinationOrderRecipient;
 	addServerRecipientChannel <- workerCostRequestRecipient;
@@ -142,7 +147,13 @@ func Run() {
 				distributorHandleOrderTakenConfirmation(message, transmitChannel);
 
 			//-----------------------------------------------//
-			// Distributor switching
+
+			case message := <- distributorOrdersExecutedOnFloorRecipient.ReceiveChannel:
+
+				distributorHandleOrdersExecutedOnFloor(message, transmitChannel);
+
+			//-----------------------------------------------//
+			// Distributor switching and merging
 
 			case disconnectIPAddr := <- eventDisconnect:
 
@@ -194,7 +205,7 @@ func Run() {
 				
 				workerHandleCostRequest(message, elevatorEventCostRequest);
 
-			case cost := <- workerCostResponseFromElevatorReceiver:
+			case cost := <- workerCostResponseFromElevator:
 
 				workerHandleElevatorCostResponse(cost, transmitChannel);
 
@@ -207,6 +218,10 @@ func Run() {
 				workerHandleDestinationOrderTakenBySomeone(message);
 
 			//-----------------------------------------------//
+
+			case floor := <- workerOrdersExecutedOnFloor:
+
+				workerHandleOrdersExecutedOnFloor(floor, transmitChannel);
 
 			case message := <- workerChangeDistributor.ReceiveChannel:
 

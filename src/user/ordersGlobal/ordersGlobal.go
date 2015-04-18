@@ -29,3 +29,26 @@ func AlreadyStored(order Order) bool {
 func Add(order Order) {
 	orders = append(orders, order);
 }
+
+//-----------------------------------------------//
+
+func RemoveOnFloor(floor int) {
+	
+	orderIndex := 0;
+
+	for {
+		if orderIndex >= 0 && orderIndex < len(orders) {
+
+			if (orders[orderIndex].Floor == floor) {
+
+				orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
+
+			} else {
+				orderIndex = orderIndex + 1;
+			}
+
+		} else {
+			break;
+		}
+	}
+}

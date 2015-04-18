@@ -15,11 +15,11 @@ var distributorIPAddr string = network.GetLocalIPAddr();
 
 //-----------------------------------------------//
 
-func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewOrder chan Order) {
+func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order) {
 	
 	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
 		
-		elevatorEventNewOrder <- order;
+		elevatorEventNewDestinationOrder <- order;
 		
 	} else {
 
@@ -33,7 +33,7 @@ func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message
 	}
 }
 
-func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewOrder chan Order) {
+func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewDestinationOrder chan Order) {
 	
 	log.Data("Worker: Got new desitination order");
 
@@ -50,10 +50,12 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 		ordersGlobal.Add(order);
 	}
 
-	elevatorEventNewOrder <- order;
+	elevatorEventNewDestinationOrder <- order;
 
 	transmitChannel <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
+
+//-----------------------------------------------//
 
 func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
 
@@ -73,6 +75,17 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
 	if !ordersGlobal.AlreadyStored(order) {
 		ordersGlobal.Add(order);
 	}
+}
+
+func workerHandleOrdersExecutedOnFloor(floor int, transmitChannel chan network.Message) {
+
+	log.Data("Worker: Executed orders on floor", floor);
+
+	ordersGlobal.RemoveOnFloor(floor);
+
+	floorEncoded, _ := JSON.Encode(floor);
+
+	transmitChannel <- network.MakeMessage("distributorOrdersExecutedOnFloor", floorEncoded, distributorIPAddr);
 }
 
 //-----------------------------------------------//
