@@ -5,6 +5,7 @@ import(
 	"strconv"
 	"time"
 	"sync"
+	"user/config"
 	"user/log"
 	"user/encoder/JSON"
 );
@@ -14,9 +15,6 @@ import(
 const (
 	BROADCAST_ADDR 	string = "255.255.255.255"
 	LOCALHOST 		string = "localhost"
-
-	PORT_SERVER_DEFAULT 		int = 9125
-	PORT_SERVER_WITH_TIMEOUT	int = 9126
 );
 
 //-----------------------------------------------//
@@ -67,10 +65,10 @@ func MakeMessage(recipientID string, data []byte, destinationIPAddr string) Mess
 	return Message{	RecipientID : recipientID, 
 					
 					DestinationIPAddr : destinationIPAddr, 
-					DestinationPort : PORT_SERVER_DEFAULT,
+					DestinationPort : config.PORT_SERVER_DEFAULT,
 					
 					SenderIPAddr : iPAddr,
-					SenderPort : PORT_SERVER_DEFAULT,
+					SenderPort : config.PORT_SERVER_DEFAULT,
 	 				
 	 				Data : data }
 }
@@ -80,10 +78,10 @@ func MakeTimeoutMessage(recipientID string, data []byte, destinationIPAddr strin
 	return Message{	RecipientID : recipientID, 
 					
 					DestinationIPAddr : destinationIPAddr, 
-					DestinationPort : PORT_SERVER_WITH_TIMEOUT,
+					DestinationPort : config.PORT_SERVER_WITH_TIMEOUT,
 					
 					SenderIPAddr : iPAddr,
-					SenderPort : PORT_SERVER_WITH_TIMEOUT,
+					SenderPort : config.PORT_SERVER_WITH_TIMEOUT,
 	 				
 	 				Data : data }
 }
@@ -97,7 +95,7 @@ type Recipient struct {
 
 func udpListen(IPAddr string, messageChannel chan<- Message) {
 
-	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
+	listenAddress, _     := net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
 	listenConnection, err := net.ListenUDP("udp", listenAddress);
 
 	if err != nil{
@@ -160,7 +158,7 @@ func UDPListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 
 func udpListenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
-	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_WITH_TIMEOUT));
+	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(config.PORT_SERVER_WITH_TIMEOUT));
 	listenConnection, _ := net.ListenUDP("udp", listenAddress);
 	
 	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
@@ -278,7 +276,7 @@ func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, mes
 
 func tcpListen(IPAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
 
-	serverAddr, _     		:= net.ResolveTCPAddr("tcp", IPAddr + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
+	serverAddr, _     		:= net.ResolveTCPAddr("tcp", IPAddr + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
 	serverConnection, err 	:= net.ListenTCP("tcp", serverAddr);
 	
 	if err != nil{
@@ -331,7 +329,7 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 
 func tcpConnectTo(remoteAddrRaw string) {
 
-	remoteAddr, err := net.ResolveTCPAddr("tcp", remoteAddrRaw + ":" + strconv.Itoa(PORT_SERVER_DEFAULT));
+	remoteAddr, err := net.ResolveTCPAddr("tcp", remoteAddrRaw + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
 
 	if err != nil {
 		log.Error(err);
@@ -368,7 +366,6 @@ func TCPTransmitServer(transmitChannel chan Message) {
 				_, connectionExists := tcpConnections[message.DestinationIPAddr];
 
 				if !connectionExists {
-					log.Data(message)
 					tcpConnectTo(message.DestinationIPAddr);
 				}
 

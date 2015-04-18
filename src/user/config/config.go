@@ -15,4 +15,7 @@ const(
 
 	SHOULD_DISPLAY_ELEVATOR 			bool 			= 	false
 	SHOULD_DISPLAY_WORKERS				bool 			= 	true
+
+	PORT_SERVER_DEFAULT 				int 			= 	9125
+	PORT_SERVER_WITH_TIMEOUT			int 			= 	9126
 );

@@ -1,0 +1,273 @@
+package elevatorController;
+
+import(
+	. "user/typeDefinitions"
+	"user/network"
+	"user/config"
+	"user/log"
+	"time"
+	"user/encoder/JSON"
+	"strings"
+	"strconv"
+);
+
+//-----------------------------------------------//
+
+type State int
+
+const (
+	STATE_IDLE   								State = iota
+	STATE_AWAITING_COST_RESPONSE   				State = iota
+	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
+	STATE_AWAITING_DATA_COLLECTION 				State = iota
+	STATE_INACTIVE 								State = iota
+);
+
+var currentState State;
+
+//-----------------------------------------------//
+
+var workerIPAddrs []string;
+
+//-----------------------------------------------//
+
+type CostBid struct {
+	Value			int
+	SenderIPAddr 	string
+}
+
+var costBids []CostBid;
+
+func costBidAllreadyStored(costBid CostBid) bool {
+		
+	for costBidIndex := 0 ; costBidIndex < len(costBids); costBidIndex++{
+		if (costBids[costBidIndex].SenderIPAddr == costBid.SenderIPAddr) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+func costBidAddAndSort(newCostBid CostBid) {
+	
+	costBids = append(costBids, newCostBid);
+		
+	for costBidIndex := (len(costBids) - 1); costBidIndex > 0; costBidIndex--{
+		
+		tempCostBid := costBids[costBidIndex]
+
+		if (costBids[costBidIndex].Value < costBids[costBidIndex-1].Value) {
+			
+			costBids[costBidIndex] 		= costBids[costBidIndex-1];
+			costBids[costBidIndex-1] 	= tempCostBid;
+		}
+	}
+}
+
+//-----------------------------------------------//
+// Order handling
+
+var currentlyHandledOrder Order;
+
+func distributorHandleEventNewOrder(message network.Message, transmitChannel chan network.Message) {
+	
+	switch currentState {
+		case STATE_IDLE:
+			
+			log.Data("Distributor: Got new order to distribute")
+
+			orderEncoded := message.Data;
+			err := JSON.Decode(orderEncoded, &currentlyHandledOrder);
+
+			if err != nil {
+				log.Error(err, "decode error");
+			}
+
+			for worker := range workerIPAddrs {
+				transmitChannel <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
+			}
+
+			currentState = STATE_AWAITING_COST_RESPONSE;
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+		case STATE_AWAITING_DATA_COLLECTION:
+
+		case STATE_INACTIVE:
+	}
+}
+
+func distributorHandleEventCostResponse(message network.Message, transmitChannel chan network.Message){
+
+	switch currentState {
+		case STATE_IDLE:
+			log.DataWithColor(log.COLOR_YELLOW, "state idle")
+		case STATE_AWAITING_COST_RESPONSE:
+
+			var cost int;
+			err := JSON.Decode(message.Data, &cost);
+
+			if err != nil {
+				log.Error(err);
+			}
+
+			log.Data("Distributor: Got cost", cost, "from", message.SenderIPAddr);
+
+			newCostBid := CostBid{ Value : cost, SenderIPAddr : message.SenderIPAddr };
+
+			if !costBidAllreadyStored(newCostBid) {
+				costBidAddAndSort(newCostBid);
+			}
+
+			if len(workerIPAddrs) == len(costBids) {
+
+				log.Data("Distributor: send destination", currentlyHandledOrder.Floor, "to", costBids[0].SenderIPAddr);
+				
+				order, _ := JSON.Encode(currentlyHandledOrder);
+				transmitChannel <- network.MakeMessage("workerNewDestinationOrder", order, costBids[0].SenderIPAddr);
+
+				currentState = STATE_IDLE;
+			}
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+		case STATE_AWAITING_DATA_COLLECTION:
+
+		case STATE_INACTIVE:
+	}
+}
+
+//-----------------------------------------------//
+
+func distributorHandleEventOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message) {
+
+	switch currentState {
+		case STATE_IDLE:
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+			var takenOrder Order;
+
+			err := JSON.Decode(message.Data, &takenOrder);
+
+			if err != nil{
+				log.Error(err, "Decode error");
+			}
+
+			log.Data("Distributor: Got order taken Confirmation")
+
+			
+		case STATE_AWAITING_DATA_COLLECTION:
+
+		case STATE_INACTIVE:
+	}
+}
+
+//-----------------------------------------------//
+
+func distributorHandleActiveNotificationTick(broadcastChannel chan network.Message) {
+
+	switch currentState {
+		case STATE_IDLE:
+
+			message, _ := JSON.Encode("Alive");
+			broadcastChannel <- network.MakeMessage("distributorActiveNotification", message, network.BROADCAST_ADDR);
+	}
+}
+
+func distributorHandleActiveNotification(message network.Message, timeoutDistributorActiveNotification *time.Timer, transmitChannel chan network.Message) {
+
+	switch currentState {
+		case STATE_IDLE:
+			
+			IPAddrNumbersLocal := strings.Split(network.GetLocalIPAddr(), ".");
+			IPAddrNumbersSender := strings.Split(message.SenderIPAddr, ".");
+			
+			IPAddrEndingLocal, _ := strconv.Atoi(IPAddrNumbersLocal[3]);
+			IPAddrEndingSender, _ := strconv.Atoi(IPAddrNumbersSender[3]);
+
+			if IPAddrEndingLocal > IPAddrEndingSender {
+
+				log.Data("Distributor: Merge with", message.SenderIPAddr);
+				messageMerge, _ := JSON.Encode("Merge");
+				transmitChannel <- network.MakeMessage("distributorMergeRequest", messageMerge, message.SenderIPAddr);
+
+				workerIPAddrs = append(workerIPAddrs, message.SenderIPAddr);
+
+				currentState = STATE_IDLE;
+			}
+
+		case STATE_INACTIVE:
+
+			timeoutDistributorActiveNotification.Reset(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT);
+	}
+}
+
+func distributorHandleMergeRequest(message network.Message, eventChangeDistributor chan string) {
+
+	switch currentState {
+		case STATE_IDLE:
+
+			log.Data("Distributor: Going into inactive some else is my distributor now.");
+			eventChangeDistributor <- message.SenderIPAddr;
+
+			currentState = STATE_INACTIVE;
+	}
+}
+
+func distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification *time.Timer, eventInactiveDisconnect chan string, eventChangeNotificationRecipientID chan string) {
+
+	switch currentState {
+		case STATE_INACTIVE:
+
+			log.Data("No distributor, switch");
+
+			timeoutDistributorActiveNotification.Stop();
+			
+			workerIPAddrs = make([]string, 0, 1);
+			workerIPAddrs = append(workerIPAddrs, network.GetLocalIPAddr());
+
+			eventChangeNotificationRecipientID <- "distributorActiveNotification";
+
+			currentState = STATE_IDLE;
+	}
+}
+
+//-----------------------------------------------//
+
+func distributorDisplayWorkers() {
+
+	if config.SHOULD_DISPLAY_WORKERS {
+
+		log.DataWithColor(log.COLOR_CYAN, "-------------------");
+		log.DataWithColor(log.COLOR_CYAN, "Workers:");
+
+		for worker := range workerIPAddrs {
+			log.Data(workerIPAddrs[worker]);
+		}
+
+		log.DataWithColor(log.COLOR_CYAN, "-------------------");
+	}
+}
+
+func distributorHandleInactiveNotification(message network.Message) {
+
+	/*_, keyExists := inactiveDisconnectTimeouts[message.SenderIPAddr];
+
+	if keyExists {
+			
+		inactiveDisconnectTimeouts[message.SenderIPAddr].Reset(config.SLAVE_ALIVE_NOTIFICATION_TIMEOUT);
+		log.Data("Inactive in list, reset...");
+	}*/
+}
+
+func distributorHandleInactiveDisconnect(workerDisconnectIP string) {
+
+	// Redistribute order of disconnected node
+	log.Data("Disconnected worker", workerDisconnectIP);
+}
