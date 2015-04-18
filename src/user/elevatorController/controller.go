@@ -6,6 +6,7 @@ import(
 	"user/network"
 	"time"
 	"user/config"
+	"user/log"
 );
 
 //-----------------------------------------------//
@@ -69,15 +70,13 @@ func Run() {
 	distributorCostResponseRecipient 			:= network.Recipient{ ID : "distributorCostResponse", 			ReceiveChannel : make(chan network.Message) };
 	distributorOrderTakenConfirmationRecipient  := network.Recipient{ ID : "distributorOrderTakenConfirmation", ReceiveChannel : make(chan network.Message) };
 
+	distributorMergeRequestRecipient 			:= network.Recipient{ ID : "distributorMergeRequest", 			ReceiveChannel : make(chan network.Message) };
+
 	addServerRecipientChannel <- distributorNewOrderRecipient;
 	addServerRecipientChannel <- distributorCostResponseRecipient;
 	addServerRecipientChannel <- distributorOrderTakenConfirmationRecipient;
 
-	distributorMergeRequestRecipient 			:= network.Recipient{ ID : "distributorMergeRequest", 			ReceiveChannel : make(chan network.Message) };
-	distributorMergeDataRecipient 				:= network.Recipient{ ID : "distributorMergeData", 				ReceiveChannel : make(chan network.Message) };
-
 	addServerRecipientChannel <- distributorMergeRequestRecipient;
-	addServerRecipientChannel <- distributorMergeDataRecipient;
 
 	//------------------------------	-----------------//
 
@@ -88,27 +87,15 @@ func Run() {
 	eventDistributorActiveNotificationTicker := time.NewTicker(config.MASTER_ALIVE_NOTIFICATION_DELAY);
 
 	//-----------------------------------------------//
-
-	eventInactiveDisconnect 						:= make(chan string);
-	eventDsitributorActiveNotificationTimeout 		:= make(chan bool);
-	eventChangeNotificationRecipientID 				:= make(chan string);
-
-	timeoutDistributorActiveNotification := time.AfterFunc(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT, func() {
-		//eventDsitributorActiveNotificationTimeout <- true;
-	});
-
-	//-----------------------------------------------//
 	// Worker setup
+
+	eventChangeDistributor 				:= make(chan string);
 
 	workerNewDestinationOrderRecipient 	:= network.Recipient{ ID : "workerNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
 	workerCostRequestRecipient 		   	:= network.Recipient{ ID : "workerCostRequest", 		ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- workerNewDestinationOrderRecipient;
 	addServerRecipientChannel <- workerCostRequestRecipient;
-
-	workerChangeDistributor 		   	:= network.Recipient{ ID : "workerChangeDistributor", 		ReceiveChannel : make(chan network.Message) };
-
-	addServerRecipientChannel <- workerChangeDistributor;
 
 	//-----------------------------------------------//
 
@@ -120,6 +107,10 @@ func Run() {
 			// Distributor
 			//-----------------------------------------------//
 			//-----------------------------------------------//
+
+			case disconnectIPAddr := <- eventDisconnect:
+
+				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannel);
 
 			//-----------------------------------------------//
 			// Distribute order
@@ -142,38 +133,17 @@ func Run() {
 			//-----------------------------------------------//
 			// Distributor switching
 
-			case disconnectIPAddr := <- eventDisconnect:
-
-				distributorHandleConnectionDisconnect(disconnectIPAddr);
-
 			case <- eventDistributorActiveNotificationTicker.C:
 
 				distributorHandleActiveNotificationTick(broadcastChannel);
 
-			case  <- eventDsitributorActiveNotificationTimeout:
-
-				distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification, eventInactiveDisconnect, eventChangeNotificationRecipientID);
-
-			//-----------------------------------------------//
-
 			case message := <- distributorActiveNotificationRecipient.ReceiveChannel:
 				
-				distributorHandleActiveNotification(message, timeoutDistributorActiveNotification, transmitChannel);
+				distributorHandleActiveNotification(message, transmitChannel);
 
 			case message := <- distributorMergeRequestRecipient.ReceiveChannel:
 
 				distributorHandleMergeRequest(message, transmitChannel);
-
-			case message := <- distributorMergeDataRecipient.ReceiveChannel:
-
-				distributorHandleMergeData(message, transmitChannel);
-
-			//-----------------------------------------------//
-			// Inactive registration
-
-			case inactiveDisconnectIP := <- eventInactiveDisconnect:
-
-				distributorHandleInactiveDisconnect(inactiveDisconnectIP);
 
 			//-----------------------------------------------//
 			//-----------------------------------------------//
@@ -182,7 +152,7 @@ func Run() {
 			//-----------------------------------------------//
 			
 			//-----------------------------------------------//
-			// Orders
+			// Orders 
 
 			case order := <- workerOrderFromElevatorReceiver:
 				
@@ -202,9 +172,10 @@ func Run() {
 			
 			//-----------------------------------------------//
 
-			case message := <- workerChangeDistributor.ReceiveChannel:
+			case newDistributorIPAddr := <- eventChangeDistributor:
 
-				workerHandleDistributorChange(message);
+				log.Data("Worker: I have a new distributor now", newDistributorIPAddr);
+				distributorIPAddr = newDistributorIPAddr;
 		}
 	}
 

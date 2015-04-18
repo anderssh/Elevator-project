@@ -5,7 +5,6 @@ import(
 	"user/network"
 	"user/config"
 	"user/log"
-	"time"
 	"user/encoder/JSON"
 	"strings"
 	"strconv"
@@ -27,9 +26,20 @@ const (
 
 var currentState State;
 
+var currentlyHandledOrder Order = Order{ -1, -1 };
+
 //-----------------------------------------------//
 
 var workerIPAddrs []string;
+
+func removeIpAddrFromWorkerIpAddrList(remoteAddr string) {	
+
+	for worker := range workerIPAddrs {
+		if (workerIPAddrs[worker] == remoteAddr) {
+			workerIPAddrs = append(workerIPAddrs[:worker], workerIPAddrs[worker+1:]...)
+		}
+	}
+}
 
 func distributorDisplayWorkers() {
 
@@ -87,18 +97,24 @@ func costBidAddAndSort(newCostBid CostBid) {
 	}
 }
 
-func removeIpAddrFromWorkerIpAddrList(remoteAddr string) {	
+//-----------------------------------------------//
 
-	for worker := range workerIPAddrs {
-		if (workerIPAddrs[worker] == remoteAddr) {
-			workerIPAddrs = append(workerIPAddrs[:worker], workerIPAddrs[worker+1:]...)
-		}
-	}
+func distributorInitialize(transmitChannel chan network.Message) {
+
+	workerIPAddrs = make([]string, 0, 1);
+	localIPAddr := network.GetLocalIPAddr()
+
+	workerIPAddrs = append(workerIPAddrs, localIPAddr);
+
+	costBids = make([]CostBid, 0, 1);
+	currentlyHandledOrder = Order{ -1, -1 };
+
+	transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), localIPAddr);
+
 }
+
 //-----------------------------------------------//
 // Order handling
-
-var currentlyHandledOrder Order = Order{ -1, -1 };
 
 func distributorHandleNewOrder(message network.Message, transmitChannel chan network.Message) {
 	
@@ -198,14 +214,18 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 //-----------------------------------------------//
 // Merging
 
-func distributorHandleConnectionDisconnect(disconnectIPAddr string) {
+func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
 
+			log.Data("Distributor: disconnected in IDLE")
 			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
 
+
 		case STATE_AWAITING_COST_RESPONSE:
+
+			log.Data("Distributor: disconnected in AWAITING COST RESPONSE")
 
 			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
 			costBids = make([]CostBid, 0, 1);
@@ -218,6 +238,14 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string) {
 			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
 			costBids = make([]CostBid, 0, 1);
 			currentlyHandledOrder = Order{ -1, -1 };
+
+			currentState = STATE_IDLE;
+
+		case STATE_INACTIVE:
+
+			log.Data("Distributor: disconnected in INACTIVE")
+
+			distributorInitialize(transmitChannel);
 
 			currentState = STATE_IDLE;
 	}
@@ -233,27 +261,9 @@ func distributorHandleActiveNotificationTick(broadcastChannel chan network.Messa
 	}
 }
 
-func distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification *time.Timer, eventInactiveDisconnect chan string, eventChangeNotificationRecipientID chan string) {
-
-	switch currentState {
-		case STATE_INACTIVE:
-
-			log.Data("No distributor, switch");
-
-			timeoutDistributorActiveNotification.Stop();
-			
-			workerIPAddrs = make([]string, 0, 1);
-			workerIPAddrs = append(workerIPAddrs, network.GetLocalIPAddr());
-
-			eventChangeNotificationRecipientID <- "distributorActiveNotification";
-
-			currentState = STATE_IDLE;
-	}
-}
-
 //-----------------------------------------------//
 
-func distributorHandleActiveNotification(message network.Message, timeoutDistributorActiveNotification *time.Timer, transmitChannel chan network.Message) {
+func distributorHandleActiveNotification(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -272,10 +282,6 @@ func distributorHandleActiveNotification(message network.Message, timeoutDistrib
 
 				currentState = STATE_AWAITING_MERGE_DATA;
 			}
-
-		case STATE_INACTIVE:
-
-			timeoutDistributorActiveNotification.Reset(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT);
 	}
 }
 
@@ -318,23 +324,4 @@ func distributorHandleMergeData(message network.Message, transmitChannel chan ne
 
 			currentState = STATE_IDLE;
 	}
-}
-
-//-----------------------------------------------//
-
-func distributorHandleInactiveNotification(message network.Message) {
-
-	/*_, keyExists := inactiveDisconnectTimeouts[message.SenderIPAddr];
-
-	if keyExists {
-			
-		inactiveDisconnectTimeouts[message.SenderIPAddr].Reset(config.SLAVE_ALIVE_NOTIFICATION_TIMEOUT);
-		log.Data("Inactive in list, reset...");
-	}*/
-}
-
-func distributorHandleInactiveDisconnect(workerDisconnectIP string) {
-
-	// Redistribute order of disconnected node
-	log.Data("Disconnected worker", workerDisconnectIP);
 }
