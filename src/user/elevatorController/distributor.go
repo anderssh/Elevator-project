@@ -85,6 +85,14 @@ func costBidAddAndSort(newCostBid CostBid) {
 	}
 }
 
+func removeIpAddrFromWorkerIpAddrList(remoteAddr string) {	
+
+	for worker := range workerIPAddrs {
+		if (workerIPAddrs[worker] == remoteAddr) {
+			workerIPAddrs = append(workerIPAddrs[:worker], workerIPAddrs[worker+1:]...)
+		}
+	}
+}
 //-----------------------------------------------//
 // Order handling
 
@@ -186,6 +194,31 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 }
 
 //-----------------------------------------------//
+
+func distributorHandleConnectionDisconnect(disconnectIPAddr string) {
+
+	switch currentState {
+		case STATE_IDLE:
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			currentState = STATE_IDLE;
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			currentState = STATE_IDLE;
+	}
+}
 
 func distributorHandleActiveNotificationTick(broadcastChannel chan network.Message) {
 

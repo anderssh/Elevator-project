@@ -327,7 +327,7 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 
 //-----------------------------------------------//
 
-func tcpConnectTo(remoteAddrRaw string) {
+func tcpConnectTo(remoteAddrRaw string, eventDisconnect chan string) {
 
 	remoteAddr, err := net.ResolveTCPAddr("tcp", remoteAddrRaw + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
 
@@ -335,7 +335,7 @@ func tcpConnectTo(remoteAddrRaw string) {
 		log.Error(err);
 	}
 
-	for { //BUGBUGBUG
+	for {
 
 		connection, err := net.DialTCP("tcp", nil, remoteAddr);
 
@@ -343,6 +343,8 @@ func tcpConnectTo(remoteAddrRaw string) {
 			
 			log.Error("Could not dial tcp", remoteAddrRaw, remoteAddr);
 			log.Error(err)
+
+			eventDisconnect <- remoteAddrRaw;
 			
 			return;
 
@@ -357,7 +359,7 @@ func tcpConnectTo(remoteAddrRaw string) {
 	}
 }
 
-func TCPTransmitServer(transmitChannel chan Message) {
+func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string) {
 
 	for {
 		select {
@@ -366,7 +368,7 @@ func TCPTransmitServer(transmitChannel chan Message) {
 				_, connectionExists := tcpConnections[message.DestinationIPAddr];
 
 				if !connectionExists {
-					tcpConnectTo(message.DestinationIPAddr);
+					tcpConnectTo(message.DestinationIPAddr, eventDisconnect);
 				}
 
 				tcpConnectionsMutex.Lock();
