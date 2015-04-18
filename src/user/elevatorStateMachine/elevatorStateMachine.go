@@ -27,24 +27,26 @@ var currentState 		State;
 var floorDestination 	int;
 var displaySwitch		bool;
 
-var eventReachedNewFloor 	chan int;
-var eventCloseDoor 			chan bool;
-var eventStop 				chan bool;
-var eventObstruction 		chan bool;
-var eventButtonFloorPressed chan ButtonFloor;
+var eventReachedNewFloor 		chan int;
+var eventCloseDoor 				chan bool;
+var eventStop 					chan bool;
+var eventObstruction 			chan bool;
+var eventButtonFloorPressed 	chan ButtonFloor;
 
-var eventNewOrder 			chan Order;
-var orderHandler 			chan Order;
+var eventNewOrder 				chan Order;
+var orderHandler 				chan Order;
+var ordersExecutedOnFloorHandler chan int;
 
-var eventCostRequest		chan Order;
-var costResponseHandler 	chan int;
+var eventCostRequest			chan Order;
+var costResponseHandler 		chan int;
 
 //-----------------------------------------------//
 
 func Initialize(orderHandlerArg chan Order,
 				eventNewOrderArg chan Order,
 				eventCostRequestArg chan Order,
-				costResponseHandlerArg chan int) {
+				costResponseHandlerArg chan int,
+				ordersExecutedOnFloorHandlerArg chan int) {
 
 	err := elevator.Initialize();
 
@@ -52,19 +54,18 @@ func Initialize(orderHandlerArg chan Order,
 		log.Error(err);
 	}
 
-	displaySwitch = true;
-
 	eventReachedNewFloor 	= make(chan int);
 	eventCloseDoor 			= make(chan bool);
 	eventStop 				= make(chan bool);
 	eventObstruction 		= make(chan bool);
 	eventButtonFloorPressed = make(chan ButtonFloor);
 	
-	orderHandler 	= orderHandlerArg;
 	eventNewOrder 	= eventNewOrderArg;
-
 	eventCostRequest = eventCostRequestArg;
-	costResponseHandler = costResponseHandlerArg
+
+	orderHandler 	= orderHandlerArg;
+	costResponseHandler = costResponseHandlerArg;
+	ordersExecutedOnFloorHandler = ordersExecutedOnFloorHandlerArg;
 
 	currentState 	= STATE_STARTUP;
 	floorDestination = -1;
@@ -168,7 +169,7 @@ func handleEventReachedNewFloor(floorReached int) {
 			elevator.Stop()
 
 			elevator.SetLastReachedFloor(floorReached);
-			currentState 		= STATE_IDLE;
+			currentState = STATE_IDLE;
 
 		case STATE_IDLE:
 
@@ -181,7 +182,8 @@ func handleEventReachedNewFloor(floorReached int) {
 				elevator.Stop();
 				currentState = STATE_DOOR_OPEN
 				elevator.TurnOnLightDoorOpen();
-				time.AfterFunc(time.Second*3, func() { // Close the door
+
+				time.AfterFunc(time.Second * 3, func() { // Close the door
 					eventCloseDoor <- true
 				});
 			}
@@ -213,9 +215,10 @@ func handleEventCloseDoor() {
 
 		case STATE_DOOR_OPEN:
 
-			elevator.TurnOffLightDoorOpen();
-
 			ordersLocal.RemoveOnFloor(elevator.GetLastReachedFloor());
+			ordersExecutedOnFloorHandler <- elevator.GetLastReachedFloor();
+			log.Error("EXE")
+			elevator.TurnOffLightDoorOpen();
 			elevator.TurnOffAllLightButtonsOnFloor(elevator.GetLastReachedFloor());
 
 			if ordersLocal.Exists() {
@@ -226,7 +229,8 @@ func handleEventCloseDoor() {
 					
 					log.Warning("Orders still on floor when door closed.");
 					currentState = STATE_DOOR_OPEN;
-					time.AfterFunc(time.Second*3, func() { // Close the door
+					
+					time.AfterFunc(time.Second * 3, func() { // Close the door
 						eventCloseDoor <- true
 					});
 
@@ -293,7 +297,7 @@ func handleEventNewOrder(order Order) {
 					
 					currentState = STATE_DOOR_OPEN;
 					elevator.TurnOnLightDoorOpen();
-					time.AfterFunc(time.Second*3, func() { // Close the door
+					time.AfterFunc(time.Second * 3, func() { // Close the door
 						eventCloseDoor <- true;
 					});
 

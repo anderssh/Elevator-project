@@ -196,18 +196,31 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 			var takenOrder Order;
 			err := JSON.Decode(message.Data, &takenOrder);
 
-			if err != nil{
+			if err != nil {
 				log.Error(err, "Decode error");
 			}
 
 			// Distribute to others for global storage
-
+			for costBidIndex := 1; costBidIndex < len(costBids); costBidIndex++ {
+				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", message.Data, costBids[costBidIndex].SenderIPAddr);
+			}
 
 			// Clean up
 			costBids = make([]CostBid, 0, 1);
 			currentlyHandledOrder = Order{ -1, -1 };
 
 			currentState = STATE_IDLE;
+	}
+}
+
+//-----------------------------------------------//
+
+func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitChannel chan network.Message) {
+
+	log.Data("Distributor: orders on floor executed by someone");
+
+	for worker := range workerIPAddrs {
+		transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloor", message.Data, workerIPAddrs[worker]);
 	}
 }
 
