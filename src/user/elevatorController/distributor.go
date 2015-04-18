@@ -20,6 +20,8 @@ const (
 	STATE_AWAITING_COST_RESPONSE   				State = iota
 	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
 
+	STATE_AWAITING_MERGE_DATA					State = iota
+
 	STATE_INACTIVE 								State = iota
 );
 
@@ -183,7 +185,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 			}
 
 			// Distribute to others for global storage
-			
+
 
 			// Clean up
 			costBids = make([]CostBid, 0, 1);
@@ -194,6 +196,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 }
 
 //-----------------------------------------------//
+// Merging
 
 func distributorHandleConnectionDisconnect(disconnectIPAddr string) {
 
@@ -230,6 +233,26 @@ func distributorHandleActiveNotificationTick(broadcastChannel chan network.Messa
 	}
 }
 
+func distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification *time.Timer, eventInactiveDisconnect chan string, eventChangeNotificationRecipientID chan string) {
+
+	switch currentState {
+		case STATE_INACTIVE:
+
+			log.Data("No distributor, switch");
+
+			timeoutDistributorActiveNotification.Stop();
+			
+			workerIPAddrs = make([]string, 0, 1);
+			workerIPAddrs = append(workerIPAddrs, network.GetLocalIPAddr());
+
+			eventChangeNotificationRecipientID <- "distributorActiveNotification";
+
+			currentState = STATE_IDLE;
+	}
+}
+
+//-----------------------------------------------//
+
 func distributorHandleActiveNotification(message network.Message, timeoutDistributorActiveNotification *time.Timer, transmitChannel chan network.Message) {
 
 	switch currentState {
@@ -247,9 +270,7 @@ func distributorHandleActiveNotification(message network.Message, timeoutDistrib
 				messageMerge, _ := JSON.Encode("Merge");
 				transmitChannel <- network.MakeMessage("distributorMergeRequest", messageMerge, message.SenderIPAddr);
 
-				workerIPAddrs = append(workerIPAddrs, message.SenderIPAddr);
-
-				currentState = STATE_IDLE;
+				currentState = STATE_AWAITING_MERGE_DATA;
 			}
 
 		case STATE_INACTIVE:
@@ -258,31 +279,42 @@ func distributorHandleActiveNotification(message network.Message, timeoutDistrib
 	}
 }
 
-func distributorHandleMergeRequest(message network.Message, eventChangeDistributor chan string) {
+func distributorHandleMergeRequest(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
 
 			log.Data("Distributor: Going into inactive some else is my distributor now.");
-			eventChangeDistributor <- message.SenderIPAddr;
+
+			workerIPAddrsEncoded, _ := JSON.Encode(workerIPAddrs);
+
+			transmitChannel <- network.MakeMessage("distributorMergeData", workerIPAddrsEncoded, message.SenderIPAddr);
 
 			currentState = STATE_INACTIVE;
 	}
 }
 
-func distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification *time.Timer, eventInactiveDisconnect chan string, eventChangeNotificationRecipientID chan string) {
+func distributorHandleMergeData(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
-		case STATE_INACTIVE:
 
-			log.Data("No distributor, switch");
+		case STATE_AWAITING_MERGE_DATA:
 
-			timeoutDistributorActiveNotification.Stop();
-			
-			workerIPAddrs = make([]string, 0, 1);
-			workerIPAddrs = append(workerIPAddrs, network.GetLocalIPAddr());
+			log.Data("Distributor: Merge data received");
 
-			eventChangeNotificationRecipientID <- "distributorActiveNotification";
+			var newWorkerIPAddrs []string;
+			err := JSON.Decode(message.Data, &newWorkerIPAddrs);
+
+			if err != nil {
+				log.Error(err);
+			}
+
+			workerIPAddrs = append(workerIPAddrs, newWorkerIPAddrs ...);
+
+			for worker := range newWorkerIPAddrs {
+				log.Data("Distributor: has new worker", newWorkerIPAddrs[worker]);
+				transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), newWorkerIPAddrs[worker]);
+			}
 
 			currentState = STATE_IDLE;
 	}

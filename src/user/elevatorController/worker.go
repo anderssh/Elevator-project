@@ -23,7 +23,7 @@ func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message
 		
 	} else {
 
-		if !ordersUnconfirmed.AlreadyStored(order) {
+		if !ordersUnconfirmed.AlreadyStored(order) && !ordersGlobal.AlreadyStored(order) {
 			
 			ordersUnconfirmed.Add(order);
 			orderEncoded, _ := JSON.Encode(order);
@@ -35,6 +35,8 @@ func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message
 
 func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewOrder chan Order) {
 	
+	log.Data("Worker: Got new desitination order")
+
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
 
@@ -67,7 +69,14 @@ func workerHandleCostRequest(message network.Message, elevatorEventCostRequest c
 
 func workerHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {
 
-	costEncoded, _ := JSON.Encode(cost);
 	log.Data("Worker: Cost from local is", cost);
+
+	costEncoded, _ := JSON.Encode(cost);
 	transmitChannel <- network.MakeMessage("distributorCostResponse", costEncoded, distributorIPAddr);
+}
+
+func workerHandleDistributorChange(message network.Message) {
+
+	log.Data("Worker: I have a new distributor now", message.SenderIPAddr);
+	distributorIPAddr = message.SenderIPAddr;
 }
