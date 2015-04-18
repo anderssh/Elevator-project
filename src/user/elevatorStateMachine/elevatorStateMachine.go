@@ -176,9 +176,9 @@ func handleEventReachedNewFloor(floorReached int) {
 			elevator.SetLastReachedFloor(floorReached);
 
 		case STATE_MOVING:
-
+			
 			if floorDestination == floorReached {
-
+				
 				elevator.Stop();
 				currentState = STATE_DOOR_OPEN
 				elevator.TurnOnLightDoorOpen();

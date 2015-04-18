@@ -77,7 +77,7 @@ func initializeContainerButtonFloor() {
 	containerButtonFloor[0][2] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 2, IoRegisterPressed : io.BUTTON_UP2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP2 };
 	containerButtonFloor[0][3] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 3, IoRegisterPressed : io.BUTTON_UP3, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP3 };
 
-	containerButtonFloor[1][0] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 1, IoRegisterPressed : io.BUTTON_DOWN0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN0 };
+	containerButtonFloor[1][0] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 0, IoRegisterPressed : io.BUTTON_DOWN0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN0 };
 	containerButtonFloor[1][1] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 1, IoRegisterPressed : io.BUTTON_DOWN1, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN1 };
 	containerButtonFloor[1][2] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 2, IoRegisterPressed : io.BUTTON_DOWN2, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN2 };
 	containerButtonFloor[1][3] = ButtonFloor{ Type : BUTTON_CALL_DOWN, Floor : 3, IoRegisterPressed : io.BUTTON_DOWN3, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_DOWN3 };
@@ -201,7 +201,7 @@ func registerEventReachedFloor(eventReachedNewFloor chan int) {
 
 	if io.IsBitSet(io.SENSOR_FLOOR0) {
 
-		if lastReachedFloor != 0{
+		if lastReachedFloor != 0 {
 			eventReachedNewFloor  <- 0;
 		}
 
