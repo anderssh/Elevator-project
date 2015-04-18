@@ -11,26 +11,26 @@ import(
 
 //-----------------------------------------------//
 
-var elevatorOrderReceiver chan Order;
-var elevatorEventNewOrder chan Order;
+var workerOrderFromElevatorReceiver chan Order;
+var workerCostResponseFromElevatorReceiver chan int;
 
+var elevatorEventNewOrder chan Order;
 var elevatorEventCostRequest chan Order;
-var elevatorCostResponseReceiver chan int;
 
 //-----------------------------------------------//
 
 func Initialize() {
 	
-	elevatorOrderReceiver = make(chan Order);
+	workerOrderFromElevatorReceiver = make(chan Order);
 	elevatorEventNewOrder = make(chan Order);
 
 	elevatorEventCostRequest = make(chan Order, 10);
-	elevatorCostResponseReceiver = make(chan int, 10);
+	workerCostResponseFromElevatorReceiver = make(chan int, 10);
 
-	elevatorStateMachine.Initialize(elevatorOrderReceiver,
+	elevatorStateMachine.Initialize(workerOrderFromElevatorReceiver,
 									elevatorEventNewOrder,
 									elevatorEventCostRequest,
-									elevatorCostResponseReceiver);
+									workerCostResponseFromElevatorReceiver);
 }
 
 func Run() {
@@ -66,34 +66,34 @@ func Run() {
 
 	//-----------------------------------------------//
 
-	newOrderRecipient 				:= network.Recipient{ ID : "distributorNewOrder", 				ReceiveChannel : make(chan network.Message) };
-	costResponseRecipient 			:= network.Recipient{ ID : "distributorCostResponse", 			ReceiveChannel : make(chan network.Message) };
-	orderTakenConfirmationRecipient := network.Recipient{ ID : "distributorOrderTakenConfirmation", 	ReceiveChannel : make(chan network.Message) };
+	distributorNewOrderRecipient 				:= network.Recipient{ ID : "distributorNewOrder", 				ReceiveChannel : make(chan network.Message) };
+	distributorCostResponseRecipient 			:= network.Recipient{ ID : "distributorCostResponse", 			ReceiveChannel : make(chan network.Message) };
+	distributorOrderTakenConfirmationRecipient  := network.Recipient{ ID : "distributorOrderTakenConfirmation", ReceiveChannel : make(chan network.Message) };
 
-	mergeRequestRecipient 			:= network.Recipient{ ID : "distributorMergeRequest", 			ReceiveChannel : make(chan network.Message) };
+	distributorMergeRequestRecipient 			:= network.Recipient{ ID : "distributorMergeRequest", 			ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- newOrderRecipient;
-	addServerRecipientChannel <- costResponseRecipient;
-	addServerRecipientChannel <- orderTakenConfirmationRecipient;
+	addServerRecipientChannel <- distributorNewOrderRecipient;
+	addServerRecipientChannel <- distributorCostResponseRecipient;
+	addServerRecipientChannel <- distributorOrderTakenConfirmationRecipient;
 
-	addServerRecipientChannel <- mergeRequestRecipient;
-
-	//-----------------------------------------------//
-
-	activeNotificationRecipient := network.Recipient{ ID : "distributorActiveNotification", 		ReceiveChannel : make(chan network.Message) };
-
-	addBroadcastRecipientChannel <- activeNotificationRecipient;
-
-	eventActiveNotificationTicker := time.NewTicker(config.MASTER_ALIVE_NOTIFICATION_DELAY);
+	addServerRecipientChannel <- distributorMergeRequestRecipient;
 
 	//-----------------------------------------------//
 
-	eventInactiveDisconnect 			:= make(chan string);
-	eventActiveNotificationTimeout 		:= make(chan bool);
-	eventChangeNotificationRecipientID 	:= make(chan string);
+	distributorActiveNotificationRecipient := network.Recipient{ ID : "distributorActiveNotification", 		ReceiveChannel : make(chan network.Message) };
+
+	addBroadcastRecipientChannel <- distributorActiveNotificationRecipient;
+
+	eventDistributorActiveNotificationTicker := time.NewTicker(config.MASTER_ALIVE_NOTIFICATION_DELAY);
+
+	//-----------------------------------------------//
+
+	eventInactiveDisconnect 						:= make(chan string);
+	eventDsitributorActiveNotificationTimeout 		:= make(chan bool);
+	eventChangeNotificationRecipientID 				:= make(chan string);
 
 	timeoutDistributorActiveNotification := time.AfterFunc(config.MASTER_ALIVE_NOTIFICATION_TIMEOUT, func() {
-		//eventActiveNotificationTimeout <- true;
+		//eventDsitributorActiveNotificationTimeout <- true;
 	});
 
 	//-----------------------------------------------//
@@ -101,11 +101,11 @@ func Run() {
 
 	eventChangeDistributor 				:= make(chan string);
 
-	newDestinationOrderRecipient := network.Recipient{ ID : "workerNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
-	costRequestRecipient 		 := network.Recipient{ ID : "workerCostRequest", 		ReceiveChannel : make(chan network.Message) };
+	workerNewDestinationOrderRecipient 	:= network.Recipient{ ID : "workerNewDestinationOrder", ReceiveChannel : make(chan network.Message) };
+	workerCostRequestRecipient 		   	:= network.Recipient{ ID : "workerCostRequest", 		ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- newDestinationOrderRecipient;
-	addServerRecipientChannel <- costRequestRecipient;
+	addServerRecipientChannel <- workerNewDestinationOrderRecipient;
+	addServerRecipientChannel <- workerCostRequestRecipient;
 
 	//-----------------------------------------------//
 
@@ -121,35 +121,35 @@ func Run() {
 			//-----------------------------------------------//
 			// Distribute order
 
-			case message := <- newOrderRecipient.ReceiveChannel:
+			case message := <- distributorNewOrderRecipient.ReceiveChannel:
 
 				distributorDisplayWorkers();
 				distributorHandleEventNewOrder(message, transmitChannel);
 			
-			case message := <- costResponseRecipient.ReceiveChannel:
+			case message := <- distributorCostResponseRecipient.ReceiveChannel:
 
 				distributorHandleEventCostResponse(message, transmitChannel);
 
-			case message := <- orderTakenConfirmationRecipient.ReceiveChannel:
+			case message := <- distributorOrderTakenConfirmationRecipient.ReceiveChannel:
 
 				distributorHandleEventOrderTakenConfirmation(message, transmitChannel);
 
 			//-----------------------------------------------//
 			// Distributor switching
 
-			case <- eventActiveNotificationTicker.C:
+			case <- eventDistributorActiveNotificationTicker.C:
 
 				distributorHandleActiveNotificationTick(broadcastChannel);
 
-			case message := <- activeNotificationRecipient.ReceiveChannel:
+			case message := <- distributorActiveNotificationRecipient.ReceiveChannel:
 				
 				distributorHandleActiveNotification(message, timeoutDistributorActiveNotification, transmitChannel);
 
-			case message := <- mergeRequestRecipient.ReceiveChannel:
+			case message := <- distributorMergeRequestRecipient.ReceiveChannel:
 
 				distributorHandleMergeRequest(message, eventChangeDistributor);
 
-			case  <- eventActiveNotificationTimeout:
+			case  <- eventDsitributorActiveNotificationTimeout:
 
 				distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification, eventInactiveDisconnect, eventChangeNotificationRecipientID);
 
@@ -166,19 +166,19 @@ func Run() {
 			//-----------------------------------------------//
 			//-----------------------------------------------//
 			
-			case order := <- elevatorOrderReceiver:
+			case order := <- workerOrderFromElevatorReceiver:
 				
 				workerHandleEventNewOrder(order, transmitChannel, elevatorEventNewOrder);
 			
-			case message := <- newDestinationOrderRecipient.ReceiveChannel:
+			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
 				
 				workerHandleEventNewDestinationOrder(message, elevatorEventNewOrder);
 			
-			case message := <- costRequestRecipient.ReceiveChannel:
+			case message := <- workerCostRequestRecipient.ReceiveChannel:
 				
 				workerHandleCostRequest(message, elevatorEventCostRequest);
 
-			case cost := <- elevatorCostResponseReceiver:
+			case cost := <- workerCostResponseFromElevatorReceiver:
 
 				workerHandleElevatorCostResponse(cost, transmitChannel);
 

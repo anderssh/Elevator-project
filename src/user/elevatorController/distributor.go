@@ -19,7 +19,6 @@ const (
 	STATE_IDLE   								State = iota
 	STATE_AWAITING_COST_RESPONSE   				State = iota
 	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
-	STATE_AWAITING_DATA_COLLECTION 				State = iota
 	STATE_INACTIVE 								State = iota
 );
 
@@ -28,6 +27,26 @@ var currentState State;
 //-----------------------------------------------//
 
 var workerIPAddrs []string;
+
+func distributorDisplayWorkers() {
+
+	if config.SHOULD_DISPLAY_WORKERS {
+
+		log.DataWithColor(log.COLOR_CYAN, "-------------------------");
+		log.DataWithColor(log.COLOR_CYAN, "Workers:");
+
+		for worker := range workerIPAddrs {
+
+			if workerIPAddrs[worker] == network.GetLocalIPAddr() {
+				log.Data(workerIPAddrs[worker], "| Local");
+			} else {
+				log.Data(workerIPAddrs[worker]);
+			}
+		}
+
+		log.DataWithColor(log.COLOR_CYAN, "-------------------------");
+	}
+}
 
 //-----------------------------------------------//
 
@@ -84,19 +103,16 @@ func distributorHandleEventNewOrder(message network.Message, transmitChannel cha
 				log.Error(err, "decode error");
 			}
 
+			currentState = STATE_AWAITING_COST_RESPONSE;
+
 			for worker := range workerIPAddrs {
 				transmitChannel <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
 			}
-
-			currentState = STATE_AWAITING_COST_RESPONSE;
 
 		case STATE_AWAITING_COST_RESPONSE:
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
-		case STATE_AWAITING_DATA_COLLECTION:
-
-		case STATE_INACTIVE:
 	}
 }
 
@@ -104,7 +120,7 @@ func distributorHandleEventCostResponse(message network.Message, transmitChannel
 
 	switch currentState {
 		case STATE_IDLE:
-			log.DataWithColor(log.COLOR_YELLOW, "state idle")
+			
 		case STATE_AWAITING_COST_RESPONSE:
 
 			var cost int;
@@ -134,9 +150,6 @@ func distributorHandleEventCostResponse(message network.Message, transmitChannel
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
-		case STATE_AWAITING_DATA_COLLECTION:
-
-		case STATE_INACTIVE:
 	}
 }
 
@@ -161,10 +174,7 @@ func distributorHandleEventOrderTakenConfirmation(message network.Message, trans
 
 			log.Data("Distributor: Got order taken Confirmation")
 
-			
-		case STATE_AWAITING_DATA_COLLECTION:
-
-		case STATE_INACTIVE:
+		
 	}
 }
 
@@ -239,21 +249,6 @@ func distributorHandleDistributorDisconnect(timeoutDistributorActiveNotification
 }
 
 //-----------------------------------------------//
-
-func distributorDisplayWorkers() {
-
-	if config.SHOULD_DISPLAY_WORKERS {
-
-		log.DataWithColor(log.COLOR_CYAN, "-------------------");
-		log.DataWithColor(log.COLOR_CYAN, "Workers:");
-
-		for worker := range workerIPAddrs {
-			log.Data(workerIPAddrs[worker]);
-		}
-
-		log.DataWithColor(log.COLOR_CYAN, "-------------------");
-	}
-}
 
 func distributorHandleInactiveNotification(message network.Message) {
 
