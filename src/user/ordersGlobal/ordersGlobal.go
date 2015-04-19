@@ -7,12 +7,13 @@ import(
 
 //-----------------------------------------------//
 
-type OrderGlobal struct {
-	IPAddr 	string;
-	order 	Order;
-}
+var orders []OrderGlobal = make([]OrderGlobal, 0, 1);
 
-var orders []Order = make([]Order, 0, 1);
+//-----------------------------------------------//
+
+func MakeFromOrder(order Order, responsibleWorkerIPAddr string) OrderGlobal {
+	return OrderGlobal{ ResponsibleWorkerIPAddr : responsibleWorkerIPAddr, Type : order.Type, Floor : order.Floor };
+}
 
 //-----------------------------------------------//
 
@@ -27,7 +28,7 @@ func AlreadyStored(order Order) bool {
 	return false;
 }
 
-func Add(order Order) {
+func Add(order OrderGlobal) {
 	orders = append(orders, order);
 }
 
@@ -52,6 +53,20 @@ func RemoveOnFloor(floor int) {
 			break;
 		}
 	}
+}
+
+//-----------------------------------------------//
+
+func GetAll() []OrderGlobal {
+	return orders;
+}
+
+//-----------------------------------------------//
+
+func MergeWith(ordersToMerge []OrderGlobal) {
+
+	log.Data(orders)
+	log.Data(ordersToMerge)
 }
 
 //-----------------------------------------------//

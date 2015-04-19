@@ -28,6 +28,12 @@ type Order struct {
 	Floor	int
 }
 
+type OrderGlobal struct {
+	ResponsibleWorkerIPAddr string
+	Type 					OrderType
+	Floor 					int
+}
+
 //-----------------------------------------------//
 
 type ButtonType int

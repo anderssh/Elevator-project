@@ -5,6 +5,7 @@ import(
 	"user/network"
 	"user/config"
 	"user/log"
+	"user/ordersGlobal"
 	"user/encoder/JSON"
 	"strings"
 	"strconv"
@@ -144,7 +145,7 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChan
 
 		case STATE_INACTIVE:
 
-			log.Data("Distributor: disconnected in INACTIVE")
+			log.Data("Distributor: disconnected in INACTIVE. I am now a distributor.");
 
 			distributorInitialize(transmitChannel);
 
@@ -232,16 +233,19 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 			log.Data("Distributor: Got order taken Confirmation")
 
-			var takenOrder Order;
-			err := JSON.Decode(message.Data, &takenOrder);
+			var order Order;
+			err := JSON.Decode(message.Data, &order);
 
 			if err != nil {
 				log.Error(err, "Decode error");
 			}
 
 			// Distribute to others for global storage
+			orderGlobal := ordersGlobal.MakeFromOrder(order, message.SenderIPAddr);
+			orderGlobalEncoded, _ := JSON.Encode(orderGlobal);
+
 			for costBidIndex := 1; costBidIndex < len(costBids); costBidIndex++ {
-				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", message.Data, costBids[costBidIndex].SenderIPAddr);
+				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", orderGlobalEncoded, costBids[costBidIndex].SenderIPAddr);
 			}
 
 			// Clean up
@@ -300,6 +304,13 @@ func distributorHandleActiveNotification(message network.Message, transmitChanne
 	}
 }
 
+//-----------------------------------------------//
+
+type MergeData struct {
+	WorkerIPAddrs 	[]string
+	Orders 			[]OrderGlobal
+}
+
 func distributorHandleMergeRequest(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
@@ -307,9 +318,10 @@ func distributorHandleMergeRequest(message network.Message, transmitChannel chan
 
 			log.Data("Distributor: Going into inactive some else is my distributor now.");
 
-			workerIPAddrsEncoded, _ := JSON.Encode(workerIPAddrs);
+			mergeData := MergeData{ WorkerIPAddrs : workerIPAddrs, Orders : ordersGlobal.GetAll() };
+			mergeDataEncoded, _ := JSON.Encode(mergeData);
 
-			transmitChannel <- network.MakeMessage("distributorMergeData", workerIPAddrsEncoded, message.SenderIPAddr);
+			transmitChannel <- network.MakeMessage("distributorMergeData", mergeDataEncoded, message.SenderIPAddr);
 
 			currentState = STATE_INACTIVE;
 	}
@@ -323,19 +335,21 @@ func distributorHandleMergeData(message network.Message, transmitChannel chan ne
 
 			log.Data("Distributor: Merge data received");
 
-			var newWorkerIPAddrs []string;
-			err := JSON.Decode(message.Data, &newWorkerIPAddrs);
+			var mergeData MergeData;
+			err := JSON.Decode(message.Data, &mergeData);
 
 			if err != nil {
 				log.Error(err);
 			}
 
-			workerIPAddrs = append(workerIPAddrs, newWorkerIPAddrs ...);
+			workerIPAddrs = append(workerIPAddrs, mergeData.WorkerIPAddrs ...);
 
-			for worker := range newWorkerIPAddrs {
-				log.Data("Distributor: has new worker", newWorkerIPAddrs[worker]);
-				transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), newWorkerIPAddrs[worker]);
+			for worker := range mergeData.WorkerIPAddrs {
+				log.Data("Distributor: has new worker", mergeData.WorkerIPAddrs[worker]);
+				transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), mergeData.WorkerIPAddrs[worker]);
 			}
+
+			ordersGlobal.MergeWith(mergeData.Orders);
 
 			currentState = STATE_IDLE;
 	}
