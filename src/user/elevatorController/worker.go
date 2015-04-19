@@ -23,11 +23,12 @@ func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Mess
 		
 	} else {
 
+
 		if !ordersUnconfirmed.AlreadyStored(order) && !ordersGlobal.AlreadyStored(order) {
 			
 			ordersUnconfirmed.Add(order, eventUnconfirmedOrderTimeout);
 			orderEncoded, _ := JSON.Encode(order);
-
+			return;
 			transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
 		}
 	}
@@ -39,13 +40,12 @@ func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Mess
 
 func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
 
-	log.Data("Worker: Did not receive confirmation on the order I sent up");
+	log.Data("Worker: Did not receive confirmation on the order I sent up", order);
 
 	orderEncoded, _ := JSON.Encode(order);
-	ordersUnconfirmed.ResetTimer(order, eventUnconfirmedOrderTimeout)
+	ordersUnconfirmed.ResetTimer(order);
 
 	transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
-
 }
 
 //-----------------------------------------------//
@@ -62,7 +62,7 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 	if ordersUnconfirmed.AlreadyStored(order) {
 		ordersUnconfirmed.Remove(order);
 	}
-
+	
 	if !ordersGlobal.AlreadyStored(order) {
 		ordersGlobal.Add(ordersGlobal.MakeFromOrder(order, network.GetLocalIPAddr()));
 	}

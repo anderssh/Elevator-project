@@ -2,6 +2,7 @@ package typeDefinitions;
 
 import(
 	"user/io"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -32,6 +33,12 @@ type OrderGlobal struct {
 	ResponsibleWorkerIPAddr string
 	Type 					OrderType
 	Floor 					int
+}
+
+type OrderUnconfirmed struct {
+	Type 	OrderType
+	Floor	int
+	Timer	*time.Timer
 }
 
 //-----------------------------------------------//
