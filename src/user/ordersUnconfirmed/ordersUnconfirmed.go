@@ -2,18 +2,26 @@ package ordersUnconfirmed;
 
 import(
 	. "user/typeDefinitions"
+	"time"
+	"user/config"
+	"user/log"
 );
 
 //-----------------------------------------------//
 
-var orders []Order = make([]Order, 0, 1);
+type OrderUnconfirmed struct {
+	Order 	Order
+	Timer	*time.Timer
+}
+
+var ordersUnconfirmed []OrderUnconfirmed = make([]OrderUnconfirmed, 0, 1);
 
 //-----------------------------------------------//
 
 func AlreadyStored(order Order) bool {
 	
-	for orderIndex := range orders {
-		if orders[orderIndex].Type == order.Type  && orders[orderIndex].Floor == order.Floor {
+	for orderIndex := range ordersUnconfirmed {
+		if ordersUnconfirmed[orderIndex].Order.Type == order.Type  && ordersUnconfirmed[orderIndex].Order.Floor == order.Floor {
 			return true;
 		}
 	}
@@ -21,19 +29,43 @@ func AlreadyStored(order Order) bool {
 	return false;
 }
 
-func Add(order Order) {
-	orders = append(orders, order);
-}
+func Add(order Order, eventUnconfirmedOrderTimeout chan Order) {
 
+	timer := time.AfterFunc(config.TIMEOUT_TIME_ORDER_TAKEN, func() {
+		eventUnconfirmedOrderTimeout <- order;
+	});
+
+	ordersUnconfirmed = append(ordersUnconfirmed, OrderUnconfirmed{Order: order, Timer : timer})
+}
 //-----------------------------------------------//
+
 
 func Remove(order Order) {
 
-	for orderIndex := range orders {
-		if orders[orderIndex].Type == order.Type && orders[orderIndex].Floor == order.Floor {
+	for orderIndex := range ordersUnconfirmed {
+		if ordersUnconfirmed[orderIndex].Order.Type == order.Type && ordersUnconfirmed[orderIndex].Order.Floor == order.Floor {
 			
-			orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
+			ordersUnconfirmed[orderIndex].Timer.Stop();
+			ordersUnconfirmed = append(ordersUnconfirmed[0:orderIndex], ordersUnconfirmed[orderIndex + 1:] ... );
 			return;
 		}
 	}
+}
+
+func ResetTimer(order Order, eventUnconfirmedOrderTimeout chan Order) {
+
+	for orderIndex := range ordersUnconfirmed {
+		if ordersUnconfirmed[orderIndex].Order.Type == order.Type  && ordersUnconfirmed[orderIndex].Order.Floor == order.Floor {
+			
+			ordersUnconfirmed[orderIndex].Timer.Stop();
+
+			timer := time.AfterFunc(config.TIMEOUT_TIME_ORDER_TAKEN, func() {
+				eventUnconfirmedOrderTimeout <- order;
+			});
+
+			ordersUnconfirmed[orderIndex].Timer = timer;
+		}	
+	}
+	log.Error("The order to be resat is not in ordersUnconfirmed")
+
 }

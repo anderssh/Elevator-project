@@ -116,6 +116,8 @@ func Run() {
 
 	addServerRecipientChannel <- workerChangeDistributorRecipient;
 
+	eventUnconfirmedOrderTimeout 		:= make(chan Order);
+
 	//-----------------------------------------------//
 
 	for {
@@ -185,7 +187,11 @@ func Run() {
 
 			case order := <- eventElevatorNewOrder:
 				
-				workerHandleElevatorNewOrder(order, transmitChannel, elevatorNewDestinationOrder);
+				workerHandleElevatorNewOrder(order, transmitChannel, elevatorNewDestinationOrder, eventUnconfirmedOrderTimeout);
+
+			case order := <- eventUnconfirmedOrderTimeout:
+
+				workerHandleEventUnconfirmedOrderTimeout(order, transmitChannel, elevatorNewDestinationOrder, eventUnconfirmedOrderTimeout);
 			
 			case message := <- workerCostRequestRecipient.ReceiveChannel:
 				

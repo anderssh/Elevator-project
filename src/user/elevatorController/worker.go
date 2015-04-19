@@ -15,7 +15,7 @@ var distributorIPAddr string = network.GetLocalIPAddr();
 
 //-----------------------------------------------//
 
-func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order) {
+func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
 	
 	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
 		
@@ -24,8 +24,8 @@ func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Mess
 	} else {
 
 		if !ordersUnconfirmed.AlreadyStored(order) && !ordersGlobal.AlreadyStored(order) {
-			log.Data("asd", distributorIPAddr, "--")
-			ordersUnconfirmed.Add(order);
+			
+			ordersUnconfirmed.Add(order, eventUnconfirmedOrderTimeout);
 			orderEncoded, _ := JSON.Encode(order);
 
 			transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
@@ -33,6 +33,17 @@ func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Mess
 	}
 
 	ordersGlobal.Display();
+}
+
+//-----------------------------------------------//
+
+func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
+
+	orderEncoded, _ := JSON.Encode(order);
+	ordersUnconfirmed.ResetTimer(order, eventUnconfirmedOrderTimeout)
+
+	transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
+
 }
 
 //-----------------------------------------------//
