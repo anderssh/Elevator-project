@@ -67,6 +67,27 @@ func RemoveOnFloor(floor int) {
 	}
 }
 
+func RemoveCallUpAndCallDown() {
+	
+	orderIndex := 0;
+
+	for {
+		if orderIndex >= 0 && orderIndex < len(orders) {
+
+			if !(orders[orderIndex].Type == ORDER_INSIDE) {
+
+				orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
+
+			} else {
+				orderIndex = orderIndex + 1;
+			}
+
+		} else {
+			break;
+		}
+	}
+}
+
 func RemoveCallUpAndCallDownOnFloor(floor int) {
 	
 	orderIndex := 0;

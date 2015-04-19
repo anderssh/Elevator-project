@@ -9,6 +9,7 @@ import(
 	"user/encoder/JSON"
 	"strings"
 	"strconv"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -116,6 +117,17 @@ func distributorInitialize(transmitChannel chan network.Message) {
 
 //-----------------------------------------------//
 
+func returnToStateIdle(eventRedistributeOrder chan bool) {
+
+	if ordersGlobal.HasOrderToRedistribute() {
+		time.AfterFunc(time.Millisecond * 50, func() { eventRedistributeOrder <- true });
+	}
+
+	currentState = STATE_IDLE;
+}
+
+//-----------------------------------------------//
+
 func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message) {
 
 	switch currentState {
@@ -155,6 +167,34 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChan
 
 //-----------------------------------------------//
 // Order handling
+
+func distributorHandleRedistributionOfOrder(transmitChannel chan network.Message) {
+		
+	switch currentState {
+		case STATE_IDLE:
+
+			if ordersGlobal.HasOrderToRedistribute() {
+
+				log.Data("Distributor: Got new order to redistribute.")
+
+				orderToRedistribute := ordersGlobal.GetOrderToRedistribute();
+			
+				currentlyHandledOrder = Order{ Type : orderToRedistribute.Type, Floor : orderToRedistribute.Floor };
+				orderEncoded, _ := JSON.Encode(currentlyHandledOrder);
+
+				currentState = STATE_AWAITING_COST_RESPONSE;
+
+				for worker := range workerIPAddrs {
+					transmitChannel <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
+				}
+			}
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+	}
+}
 
 func distributorHandleNewOrder(message network.Message, transmitChannel chan network.Message) {
 	
@@ -222,7 +262,7 @@ func distributorHandleCostResponse(message network.Message, transmitChannel chan
 
 //-----------------------------------------------//
 
-func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -252,7 +292,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 			costBids = make([]CostBid, 0, 1);
 			currentlyHandledOrder = Order{ -1, -1 };
 
-			currentState = STATE_IDLE;
+			returnToStateIdle(eventRedistributeOrder);
 	}
 }
 
@@ -327,7 +367,7 @@ func distributorHandleMergeRequest(message network.Message, transmitChannel chan
 	}
 }
 
-func distributorHandleMergeData(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleMergeData(message network.Message, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 
@@ -351,6 +391,8 @@ func distributorHandleMergeData(message network.Message, transmitChannel chan ne
 
 			ordersGlobal.MergeWith(mergeData.Orders);
 
-			currentState = STATE_IDLE;
+			log.Data("Distributor: merged.");
+
+			returnToStateIdle(eventRedistributeOrder);
 	}
 }

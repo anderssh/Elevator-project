@@ -140,8 +140,10 @@ func workerHandleElevatorCostResponse(cost int, transmitChannel chan network.Mes
 
 //-----------------------------------------------//
 
-func workerHandleDistributorChange(message network.Message) {
+func workerHandleDistributorChange(message network.Message, elevatorRemoveCallUpAndCallDownOrders chan bool) {
 
-	log.Data("Worker: I have a new distributor now", message.SenderIPAddr);
+	log.Data("Worker: I have a new distributor now", message.SenderIPAddr, "delete all call up and down orders.");
 	distributorIPAddr = message.SenderIPAddr;
+
+	elevatorRemoveCallUpAndCallDownOrders <- true;
 }
