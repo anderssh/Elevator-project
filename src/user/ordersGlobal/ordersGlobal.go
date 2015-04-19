@@ -2,6 +2,7 @@ package ordersGlobal;
 
 import(
 	. "user/typeDefinitions"
+	"user/log"
 );
 
 //-----------------------------------------------//
@@ -50,5 +51,16 @@ func RemoveOnFloor(floor int) {
 		} else {
 			break;
 		}
+	}
+}
+
+//-----------------------------------------------//
+
+func Display() {
+
+	log.DataWithColor(log.COLOR_BLUE, "Global orders:");
+
+	for orderIndex := range orders {
+		log.DataWithColor(log.COLOR_BLUE, orders[orderIndex]);
 	}
 }

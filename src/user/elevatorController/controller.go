@@ -10,29 +10,33 @@ import(
 
 //-----------------------------------------------//
 
-var workerOrderFromElevatorReceiver chan Order;
-var workerCostResponseFromElevator chan int;
-var workerOrdersExecutedOnFloor chan int;
+var elevatorNewDestinationOrder chan Order;
+var elevatorCostRequest chan Order;
+var elevatorOrdersExecutedOnFloorBySomeone chan int;
 
-var elevatorEventNewOrder chan Order;
-var elevatorEventCostRequest chan Order;
+var eventElevatorNewOrder chan Order;
+var eventElevatorCostResponse chan int;
+var eventElevatorOrdersExecutedOnFloor chan int;
 
 //-----------------------------------------------//
 
 func Initialize() {
 	
-	workerOrderFromElevatorReceiver = make(chan Order);
-	elevatorEventNewOrder = make(chan Order);
+	elevatorNewDestinationOrder 	= make(chan Order);
+	elevatorCostRequest 			= make(chan Order, 10);
+	elevatorOrdersExecutedOnFloorBySomeone = make(chan int);
 
-	elevatorEventCostRequest = make(chan Order, 10);
-	workerCostResponseFromElevator = make(chan int, 10);
-	workerOrdersExecutedOnFloor = make(chan int);
+	eventElevatorNewOrder 			= make(chan Order);
+	eventElevatorCostResponse 		= make(chan int, 10);
+	eventElevatorOrdersExecutedOnFloor = make(chan int);
 
-	elevatorStateMachine.Initialize(workerOrderFromElevatorReceiver,
-									elevatorEventNewOrder,
-									elevatorEventCostRequest,
-									workerCostResponseFromElevator,
-									workerOrdersExecutedOnFloor);
+	elevatorStateMachine.Initialize(elevatorNewDestinationOrder,
+									elevatorCostRequest,
+									elevatorOrdersExecutedOnFloorBySomeone,
+
+									eventElevatorNewOrder,
+									eventElevatorCostResponse,
+									eventElevatorOrdersExecutedOnFloor);
 }
 
 func Run() {
@@ -73,14 +77,16 @@ func Run() {
 	distributorOrderTakenConfirmationRecipient  := network.Recipient{ ID : "distributorOrderTakenConfirmation", ReceiveChannel : make(chan network.Message) };
 	distributorOrdersExecutedOnFloorRecipient  	:= network.Recipient{ ID : "distributorOrdersExecutedOnFloor", 	ReceiveChannel : make(chan network.Message) };
 
-	distributorMergeRequestRecipient 			:= network.Recipient{ ID : "distributorMergeRequest", 			ReceiveChannel : make(chan network.Message) };
-
 	addServerRecipientChannel <- distributorNewOrderRecipient;
 	addServerRecipientChannel <- distributorCostResponseRecipient;
 	addServerRecipientChannel <- distributorOrderTakenConfirmationRecipient;
 	addServerRecipientChannel <- distributorOrdersExecutedOnFloorRecipient;
 
+	distributorMergeRequestRecipient 	:= network.Recipient{ ID : "distributorMergeRequest", 	ReceiveChannel : make(chan network.Message) };
+	distributorMergeDataRecipient 		:= network.Recipient{ ID : "distributorMergeData", 		ReceiveChannel : make(chan network.Message) };
+
 	addServerRecipientChannel <- distributorMergeRequestRecipient;
+	addServerRecipientChannel <- distributorMergeDataRecipient;
 
 	//------------------------------	-----------------//
 
@@ -96,10 +102,12 @@ func Run() {
 	workerNewDestinationOrderRecipient 				:= network.Recipient{ ID : "workerNewDestinationOrder", 			ReceiveChannel : make(chan network.Message) };
 	workerCostRequestRecipient 		   				:= network.Recipient{ ID : "workerCostRequest", 					ReceiveChannel : make(chan network.Message) };
 	workerDestinationOrderTakenBySomeoneRecipient 	:= network.Recipient{ ID : "workerDestinationOrderTakenBySomeone", 	ReceiveChannel : make(chan network.Message) };
+	workerOrdersExecutedOnFloorBySomeoneRecipient 	:= network.Recipient{ ID : "workerOrdersExecutedOnFloorBySomeone", 	ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- workerNewDestinationOrderRecipient;
 	addServerRecipientChannel <- workerCostRequestRecipient;
 	addServerRecipientChannel <- workerDestinationOrderTakenBySomeoneRecipient;
+	addServerRecipientChannel <- workerOrdersExecutedOnFloorBySomeoneRecipient;
 
 	workerChangeDistributorRecipient 	:= network.Recipient{ ID : "workerChangeDistributor", 		ReceiveChannel : make(chan network.Message) };
 
@@ -159,6 +167,10 @@ func Run() {
 
 				distributorHandleMergeRequest(message, transmitChannel);
 
+			case message := <- distributorMergeDataRecipient.ReceiveChannel:
+
+				distributorHandleMergeData(message, transmitChannel);
+
 			//-----------------------------------------------//
 			//-----------------------------------------------//
 			// Worker
@@ -168,21 +180,21 @@ func Run() {
 			//-----------------------------------------------//
 			// Orders 
 
-			case order := <- workerOrderFromElevatorReceiver:
+			case order := <- eventElevatorNewOrder:
 				
-				workerHandleEventNewOrder(order, transmitChannel, elevatorEventNewOrder);
+				workerHandleElevatorNewOrder(order, transmitChannel, elevatorNewDestinationOrder);
 			
 			case message := <- workerCostRequestRecipient.ReceiveChannel:
 				
-				workerHandleCostRequest(message, elevatorEventCostRequest);
+				workerHandleCostRequest(message, elevatorCostRequest);
 
-			case cost := <- workerCostResponseFromElevator:
+			case cost := <- eventElevatorCostResponse:
 
 				workerHandleElevatorCostResponse(cost, transmitChannel);
 
 			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
 				
-				workerHandleNewDestinationOrder(transmitChannel, message, elevatorEventNewOrder);
+				workerHandleNewDestinationOrder(transmitChannel, message, elevatorNewDestinationOrder);
 			
 			case message := <- workerDestinationOrderTakenBySomeoneRecipient.ReceiveChannel:
 
@@ -190,9 +202,15 @@ func Run() {
 
 			//-----------------------------------------------//
 
-			case floor := <- workerOrdersExecutedOnFloor:
+			case floor := <- eventElevatorOrdersExecutedOnFloor:
 
-				workerHandleOrdersExecutedOnFloor(floor, transmitChannel);
+				workerHandleElevatorOrdersExecutedOnFloor(floor, transmitChannel);
+
+			case message := <- workerOrdersExecutedOnFloorBySomeoneRecipient.ReceiveChannel:
+
+				workerHandleOrdersExecutedOnFloorBySomeone(message, elevatorOrdersExecutedOnFloorBySomeone);
+
+			//-----------------------------------------------//
 
 			case message := <- workerChangeDistributorRecipient.ReceiveChannel:
 				

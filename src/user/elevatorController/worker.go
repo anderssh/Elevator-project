@@ -15,7 +15,7 @@ var distributorIPAddr string = network.GetLocalIPAddr();
 
 //-----------------------------------------------//
 
-func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order) {
+func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order) {
 	
 	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
 		
@@ -24,14 +24,18 @@ func workerHandleEventNewOrder(order Order, transmitChannel chan network.Message
 	} else {
 
 		if !ordersUnconfirmed.AlreadyStored(order) && !ordersGlobal.AlreadyStored(order) {
-			
+			log.Data("asd", distributorIPAddr, "--")
 			ordersUnconfirmed.Add(order);
 			orderEncoded, _ := JSON.Encode(order);
 
 			transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
 		}
 	}
+
+	ordersGlobal.Display();
 }
+
+//-----------------------------------------------//
 
 func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewDestinationOrder chan Order) {
 	
@@ -55,8 +59,6 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 	transmitChannel <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
 
-//-----------------------------------------------//
-
 func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
 
 	log.Data("Worker: Some has taken a order");
@@ -77,7 +79,9 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
 	}
 }
 
-func workerHandleOrdersExecutedOnFloor(floor int, transmitChannel chan network.Message) {
+//-----------------------------------------------//
+
+func workerHandleElevatorOrdersExecutedOnFloor(floor int, transmitChannel chan network.Message) {
 
 	log.Data("Worker: Executed orders on floor", floor);
 
@@ -88,9 +92,27 @@ func workerHandleOrdersExecutedOnFloor(floor int, transmitChannel chan network.M
 	transmitChannel <- network.MakeMessage("distributorOrdersExecutedOnFloor", floorEncoded, distributorIPAddr);
 }
 
+func workerHandleOrdersExecutedOnFloorBySomeone(message network.Message, elevatorOrdersExecutedOnFloorBySomeone chan int) {
+
+	log.Data("Worker: Some has handled order on floor");
+
+	var floor int;
+	err := JSON.Decode(message.Data, &floor);
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	ordersGlobal.RemoveOnFloor(floor);
+	
+	elevatorOrdersExecutedOnFloorBySomeone <- floor;
+
+	ordersGlobal.Display();
+}
+
 //-----------------------------------------------//
 
-func workerHandleCostRequest(message network.Message, elevatorEventCostRequest chan Order) {
+func workerHandleCostRequest(message network.Message, elevatorCostRequest chan Order) {
 	
 	log.Data("Worker: Got request for cost of order");
 
@@ -101,7 +123,7 @@ func workerHandleCostRequest(message network.Message, elevatorEventCostRequest c
 		log.Error(err);
 	}
 
-	elevatorEventCostRequest <- order;
+	elevatorCostRequest <- order;
 }
 
 func workerHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {

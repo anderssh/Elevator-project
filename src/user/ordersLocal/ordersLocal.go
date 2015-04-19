@@ -2,6 +2,7 @@ package ordersLocal;
 
 import(
 	. "user/typeDefinitions"
+	"user/config"
 	"math"
 );
 
@@ -53,6 +54,27 @@ func RemoveOnFloor(floor int) {
 		if orderIndex >= 0 && orderIndex < len(orders) {
 
 			if (orders[orderIndex].Floor == floor) {
+
+				orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
+
+			} else {
+				orderIndex = orderIndex + 1;
+			}
+
+		} else {
+			break;
+		}
+	}
+}
+
+func RemoveCallUpAndCallDownOnFloor(floor int) {
+	
+	orderIndex := 0;
+
+	for {
+		if orderIndex >= 0 && orderIndex < len(orders) {
+
+			if (orders[orderIndex].Floor == floor && !(orders[orderIndex].Type == ORDER_INSIDE)) {
 
 				orders = append(orders[0:orderIndex], orders[orderIndex + 1:] ... );
 
@@ -131,11 +153,11 @@ func GetIndexInQueue(order Order, elevatorLastFloorVisited int, isElevatorMoving
 
 		if isElevatorMoving { // If we have left the elevatorLastFloorVisited
 
-			if elevatorDirection == DIRECTION_UP && startFloor < 4 {
+			if elevatorDirection == DIRECTION_UP && startFloor < config.NUMBER_OF_FLOORS - 1 {
 				
 				startFloor = startFloor + 1;
 
-			} else if elevatorDirection == DIRECTION_DOWN && startFloor > 1 {
+			} else if elevatorDirection == DIRECTION_DOWN && startFloor > 0 {
 
 				startFloor = startFloor - 1;
 			}

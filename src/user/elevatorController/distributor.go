@@ -101,16 +101,55 @@ func costBidAddAndSort(newCostBid CostBid) {
 
 func distributorInitialize(transmitChannel chan network.Message) {
 
-	workerIPAddrs = make([]string, 0, 1);
-	localIPAddr := network.GetLocalIPAddr()
+	localIPAddr := network.GetLocalIPAddr();
 
+	workerIPAddrs = make([]string, 0, 1);
 	workerIPAddrs = append(workerIPAddrs, localIPAddr);
 
 	costBids = make([]CostBid, 0, 1);
+
 	currentlyHandledOrder = Order{ -1, -1 };
 
 	transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), localIPAddr);
+}
 
+//-----------------------------------------------//
+
+func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message) {
+
+	switch currentState {
+		case STATE_IDLE:
+
+			log.Data("Distributor: disconnected in IDLE")
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+			log.Data("Distributor: disconnected in AWAITING COST RESPONSE")
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			currentState = STATE_IDLE;
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			currentState = STATE_IDLE;
+
+		case STATE_INACTIVE:
+
+			log.Data("Distributor: disconnected in INACTIVE")
+
+			distributorInitialize(transmitChannel);
+
+			currentState = STATE_IDLE;
+	}
 }
 
 //-----------------------------------------------//
@@ -220,49 +259,12 @@ func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitCha
 	log.Data("Distributor: orders on floor executed by someone");
 
 	for worker := range workerIPAddrs {
-		transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloor", message.Data, workerIPAddrs[worker]);
+		transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloorBySomeone", message.Data, workerIPAddrs[worker]);
 	}
 }
 
 //-----------------------------------------------//
 // Merging
-
-func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message) {
-
-	switch currentState {
-		case STATE_IDLE:
-
-			log.Data("Distributor: disconnected in IDLE")
-			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
-
-
-		case STATE_AWAITING_COST_RESPONSE:
-
-			log.Data("Distributor: disconnected in AWAITING COST RESPONSE")
-
-			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
-			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
-
-			currentState = STATE_IDLE;
-
-		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
-
-			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
-			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
-
-			currentState = STATE_IDLE;
-
-		case STATE_INACTIVE:
-
-			log.Data("Distributor: disconnected in INACTIVE")
-
-			distributorInitialize(transmitChannel);
-
-			currentState = STATE_IDLE;
-	}
-}
 
 func distributorHandleActiveNotificationTick(broadcastChannel chan network.Message) {
 

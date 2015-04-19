@@ -1,16 +1,11 @@
 package elevator
 
 import (
+	"user/config"
 	"user/io"
 	"time"
 	. "user/typeDefinitions"
 	"user/log"
-);
-
-//-----------------------------------------------//
-
-const(
-	NUMBER_OF_FLOORS int = 4
 );
 
 //-----------------------------------------------//
@@ -69,7 +64,7 @@ func initializeContainerButtonFloor() {
 	containerButtonFloor = make([][]ButtonFloor, 3);
 
 	for i := range containerButtonFloor {
-		containerButtonFloor[i] = make([]ButtonFloor, NUMBER_OF_FLOORS);
+		containerButtonFloor[i] = make([]ButtonFloor, config.NUMBER_OF_FLOORS);
 	}
 
 	containerButtonFloor[0][0] = ButtonFloor{ Type : BUTTON_CALL_UP, Floor : 0, IoRegisterPressed : io.BUTTON_UP0, PressedReadingPrevious : false, PressedReadingCurrent : false, IoRegisterLight : io.LIGHT_UP0 };
@@ -108,7 +103,7 @@ func Initialize() *ErrorElevator {
 	initializeContainerButtonFloor();
 	initializeSimpleButtons();
 
-	for floor := 0; floor < NUMBER_OF_FLOORS; floor++ {
+	for floor := 0; floor < config.NUMBER_OF_FLOORS; floor++ {
 		TurnOffAllLightButtonsOnFloor(floor)
 	}
 
@@ -151,7 +146,7 @@ func TurnOffLightButtonFromOrder(order Order) {
 
 func TurnOffAllLightButtonsOnFloor(floor int) {
 
-	if floor < NUMBER_OF_FLOORS - 1 {
+	if floor < config.NUMBER_OF_FLOORS - 1 {
 		containerButtonFloor[0][floor].TurnOffLight(); 		// ORDER_UP
 	}
 
@@ -258,7 +253,7 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
 			button := containerButtonFloor[buttonTypeIndex][buttonFloorIndex];
 
-			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.Floor == NUMBER_OF_FLOORS - 1) { // Omit non existing buttons
+			if !(button.Type == BUTTON_CALL_DOWN && button.Floor == 0) && !(button.Type == BUTTON_CALL_UP && button.Floor == config.NUMBER_OF_FLOORS - 1) { // Omit non existing buttons
 
 				button.UpdateState(); containerButtonFloor[buttonTypeIndex][buttonFloorIndex] = button; // Workaround for GO bug
 
