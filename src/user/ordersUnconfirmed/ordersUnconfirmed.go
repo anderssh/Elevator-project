@@ -55,6 +55,7 @@ func Remove(order Order) {
 func ResetTimer(order Order, eventUnconfirmedOrderTimeout chan Order) {
 
 	for orderIndex := range ordersUnconfirmed {
+		
 		if ordersUnconfirmed[orderIndex].Order.Type == order.Type  && ordersUnconfirmed[orderIndex].Order.Floor == order.Floor {
 			
 			ordersUnconfirmed[orderIndex].Timer.Stop();
@@ -64,8 +65,10 @@ func ResetTimer(order Order, eventUnconfirmedOrderTimeout chan Order) {
 			});
 
 			ordersUnconfirmed[orderIndex].Timer = timer;
+
+			return;
 		}	
 	}
-	log.Error("The order to be resat is not in ordersUnconfirmed")
 
+	log.Error("The order to be reset is not in ordersUnconfirmed")
 }
