@@ -64,7 +64,7 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 	}
 
 	if !ordersGlobal.AlreadyStored(order) {
-		ordersGlobal.Add(order);
+		ordersGlobal.Add(ordersGlobal.MakeFromOrder(order, network.GetLocalIPAddr()));
 	}
 
 	elevatorEventNewDestinationOrder <- order;
@@ -76,19 +76,21 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevato
 
 	log.Data("Worker: Some has taken a order");
 
-	var order Order;
-	err := JSON.Decode(message.Data, &order);
+	var orderGlobal OrderGlobal;
+	err := JSON.Decode(message.Data, &orderGlobal);
 
 	if err != nil {
 		log.Error(err);
 	}
 
-	if ordersUnconfirmed.AlreadyStored(order) {
-		ordersUnconfirmed.Remove(order);
-	}
+	order := Order{ Type : orderGlobal.Type, Floor : orderGlobal.Floor };
 
 	if !ordersGlobal.AlreadyStored(order) {
-		ordersGlobal.Add(order);
+		ordersGlobal.Add(orderGlobal);
+	}
+
+	if ordersUnconfirmed.AlreadyStored(order) {
+		ordersUnconfirmed.Remove(order);
 	}
 
 	elevatorDestinationOrderTakenBySomeone <- order;
