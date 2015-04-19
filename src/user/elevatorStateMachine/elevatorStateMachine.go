@@ -34,6 +34,7 @@ var eventObstruction 			chan bool;
 var eventButtonFloorPressed 	chan ButtonFloor;
 var eventNewDestinationOrder 	chan Order;
 var eventOrdersExecutedOnFloorBySomeone chan int;
+var eventDestinationOrderTakenBySomeone chan Order;
 
 var workerNewOrder 				chan Order;
 var workerOrdersExecutedOnFloor chan int;
@@ -46,6 +47,7 @@ var workerCostResponse 			chan int;
 func Initialize(eventNewDestinationOrderArg chan Order,
 				eventCostRequestArg chan Order,
 				eventOrdersExecutedOnFloorBySomeoneArg chan int,
+				eventDestinationOrderTakenBySomeoneArg chan Order,
 
 				workerNewOrderArg chan Order,
 				workerCostResponseArg chan int,
@@ -66,6 +68,7 @@ func Initialize(eventNewDestinationOrderArg chan Order,
 	eventNewDestinationOrder 	= eventNewDestinationOrderArg;
 	eventCostRequest 			= eventCostRequestArg;
 	eventOrdersExecutedOnFloorBySomeone = eventOrdersExecutedOnFloorBySomeoneArg;
+	eventDestinationOrderTakenBySomeone = eventDestinationOrderTakenBySomeoneArg;
 
 	workerNewOrder 				= workerNewOrderArg;
 	workerCostResponse 			= workerCostResponseArg;
@@ -188,9 +191,9 @@ func handleEventReachedNewFloor(floorReached int) {
 				if floorDestination == floorReached {
 				
 					elevator.Stop();
-					elevator.TurnOnLightDoorOpen();
 
-					time.AfterFunc(time.Second * 3, func() { // Close the door
+					elevator.TurnOnLightDoorOpen();
+					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true
 					});
 
@@ -252,7 +255,8 @@ func handleEventCloseDoor() {
 					
 					log.Warning("Orders still on floor when door closed.");
 					
-					time.AfterFunc(time.Second * 3, func() { // Close the door
+					elevator.TurnOnLightDoorOpen();
+					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true
 					});
 
@@ -309,6 +313,7 @@ func handleEventNewDestinationOrder(order Order) {
 		case STATE_IDLE:
 
 			if !ordersLocal.AlreadyStored(order) {
+
 				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
 			}
@@ -320,17 +325,19 @@ func handleEventNewDestinationOrder(order Order) {
 				if (floorDestination == elevator.GetLastReachedFloor()) {
 					
 					elevator.TurnOnLightDoorOpen();
-
-					time.AfterFunc(time.Second * 3, func() { // Close the door
+					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true;
 					});
 
 					currentState = STATE_DOOR_OPEN;
 
 				} else if floorDestination < elevator.GetLastReachedFloor() {
+					
 					elevator.DriveInDirection(DIRECTION_DOWN);
 					currentState = STATE_MOVING;
+
 				} else {
+
 					elevator.DriveInDirection(DIRECTION_UP);
 					currentState = STATE_MOVING;
 				}
@@ -339,18 +346,71 @@ func handleEventNewDestinationOrder(order Order) {
 		case STATE_MOVING:
 
 			if !ordersLocal.AlreadyStored(order) {
+				
 				ordersLocal.Add(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
+
 				floorDestination = ordersLocal.GetDestination();
 			}
 
 		case STATE_DOOR_OPEN:
 
 			if !ordersLocal.AlreadyStored(order) {
+				
 				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
 				elevator.TurnOnLightButtonFromOrder(order);
+
 				floorDestination = ordersLocal.GetDestination();
 			}
+	}
+}
+
+//-----------------------------------------------//
+
+func handleDestinationOrderTakenBySomeone(order Order) {
+
+	switch currentState {
+		case STATE_STARTUP:
+
+			log.Warning("Tried to handle order taken by someone at startup.");
+
+		case STATE_IDLE:
+
+			elevator.TurnOnLightButtonFromOrder(order);
+
+		case STATE_MOVING:
+
+			elevator.TurnOnLightButtonFromOrder(order);
+
+		case STATE_DOOR_OPEN:
+
+			elevator.TurnOnLightButtonFromOrder(order);
+	}
+}
+
+//-----------------------------------------------//
+
+func handleEventOrdersExectuedOnFloorBySomeone(floor int) {
+
+	switch currentState {
+		case STATE_STARTUP:
+
+			log.Warning("Tried to handle event orders executed by someone at startup.");
+
+		case STATE_IDLE:
+
+			ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
+			elevator.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
+
+		case STATE_MOVING:
+
+			ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
+			elevator.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
+
+		case STATE_DOOR_OPEN:
+
+			ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
+			elevator.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
 	}
 }
 
@@ -361,7 +421,7 @@ func handleEventCostRequest(order Order) {
 	switch currentState {
 		case STATE_STARTUP:
 
-			log.Warning("Tride to get cost when in startup. Nothing happens");
+			log.Warning("Tried to get cost when in startup. Nothing happens");
 
 		case STATE_IDLE:
 
@@ -379,17 +439,18 @@ func handleEventCostRequest(order Order) {
 
 //-----------------------------------------------//
 
-func handleEventOrdersExectuedBySomeone(floor int) {
-
-	ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
-}
-
-//-----------------------------------------------//
-
 func stateMachine() {
 
 	for {
 		select {
+			case <- eventStop:
+				
+				log.Warning("Pushed stop button. Button has no effect.");
+
+			case <- eventObstruction:
+
+				log.Warning("Pushed obstruction button. Button has no effect.");
+
 			case floorReached := <- eventReachedNewFloor:
 
 				handleEventReachedNewFloor(floorReached);
@@ -399,14 +460,6 @@ func stateMachine() {
 
 				handleEventCloseDoor();
 				Display();
-
-			case <- eventStop:
-				
-				log.Warning("Pushed stop button. Button has no effect.");
-
-			case <- eventObstruction:
-
-				log.Warning("Pushed obstruction button. Button has no effect.");
 
 			case button := <- eventButtonFloorPressed:
 
@@ -418,14 +471,20 @@ func stateMachine() {
 				handleEventNewDestinationOrder(order);
 				Display();
 
-			case order := <- eventCostRequest:
+			case order := <- eventDestinationOrderTakenBySomeone:
 
-				handleEventCostRequest(order);
+				handleDestinationOrderTakenBySomeone(order);
 				Display();
 
 			case floor := <- eventOrdersExecutedOnFloorBySomeone:
 
-				handleEventOrdersExectuedBySomeone(floor);
+				handleEventOrdersExectuedOnFloorBySomeone(floor);
+				Display();
+
+			case order := <- eventCostRequest:
+
+				handleEventCostRequest(order);
+				Display();
 		}
 	}
 }

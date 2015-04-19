@@ -8,6 +8,7 @@ const(
 	MASTER_ALIVE_NOTIFICATION_DELAY 	time.Duration 	=	time.Millisecond * 40
 
 	NUMBER_OF_FLOORS		 			int 			= 	4
+	ELEVATOR_DOOR_OPEN_DURATION 		time.Duration 	= 	time.Second * 3
 
 	SHOULD_DISPLAY_ELEVATOR 			bool 			= 	false
 	SHOULD_DISPLAY_WORKERS				bool 			= 	false

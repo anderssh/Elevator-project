@@ -59,7 +59,7 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 	transmitChannel <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
 
-func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
+func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevatorDestinationOrderTakenBySomeone chan Order) {
 
 	log.Data("Worker: Some has taken a order");
 
@@ -77,6 +77,8 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message) {
 	if !ordersGlobal.AlreadyStored(order) {
 		ordersGlobal.Add(order);
 	}
+
+	elevatorDestinationOrderTakenBySomeone <- order;
 }
 
 //-----------------------------------------------//
@@ -94,7 +96,7 @@ func workerHandleElevatorOrdersExecutedOnFloor(floor int, transmitChannel chan n
 
 func workerHandleOrdersExecutedOnFloorBySomeone(message network.Message, elevatorOrdersExecutedOnFloorBySomeone chan int) {
 
-	log.Data("Worker: Some has handled order on floor");
+	log.Data("Worker: Someone has handled order on floor");
 
 	var floor int;
 	err := JSON.Decode(message.Data, &floor);

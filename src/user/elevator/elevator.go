@@ -157,6 +157,17 @@ func TurnOffAllLightButtonsOnFloor(floor int) {
 	containerButtonFloor[2][floor].TurnOffLight();
 }
 
+func TurnOffCallUpAndCallDownLightButtonsOnFloor(floor int) {
+
+	if floor < config.NUMBER_OF_FLOORS - 1 {
+		containerButtonFloor[0][floor].TurnOffLight(); 		// ORDER_UP
+	}
+
+	if floor > 0 {
+		containerButtonFloor[1][floor].TurnOffLight(); 		// ORDER_DOWN
+	}
+}
+
 //-----------------------------------------------//
 
 func switchLightFloorIndicator(floorReached int) {

@@ -13,6 +13,7 @@ import(
 var elevatorNewDestinationOrder chan Order;
 var elevatorCostRequest chan Order;
 var elevatorOrdersExecutedOnFloorBySomeone chan int;
+var elevatorDestinationOrderTakenBySomeone chan Order;
 
 var eventElevatorNewOrder chan Order;
 var eventElevatorCostResponse chan int;
@@ -25,6 +26,7 @@ func Initialize() {
 	elevatorNewDestinationOrder 	= make(chan Order);
 	elevatorCostRequest 			= make(chan Order, 10);
 	elevatorOrdersExecutedOnFloorBySomeone = make(chan int);
+	elevatorDestinationOrderTakenBySomeone = make(chan Order);
 
 	eventElevatorNewOrder 			= make(chan Order);
 	eventElevatorCostResponse 		= make(chan int, 10);
@@ -33,6 +35,7 @@ func Initialize() {
 	elevatorStateMachine.Initialize(elevatorNewDestinationOrder,
 									elevatorCostRequest,
 									elevatorOrdersExecutedOnFloorBySomeone,
+									elevatorDestinationOrderTakenBySomeone,
 
 									eventElevatorNewOrder,
 									eventElevatorCostResponse,
@@ -198,7 +201,7 @@ func Run() {
 			
 			case message := <- workerDestinationOrderTakenBySomeoneRecipient.ReceiveChannel:
 
-				workerHandleDestinationOrderTakenBySomeone(message);
+				workerHandleDestinationOrderTakenBySomeone(message, elevatorDestinationOrderTakenBySomeone);
 
 			//-----------------------------------------------//
 
