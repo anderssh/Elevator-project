@@ -32,9 +32,12 @@ var eventCloseDoor 				chan bool;
 var eventStop 					chan bool;
 var eventObstruction 			chan bool;
 var eventButtonFloorPressed 	chan ButtonFloor;
+
 var eventNewDestinationOrder 	chan Order;
+
 var eventOrdersExecutedOnFloorBySomeone chan int;
 var eventDestinationOrderTakenBySomeone chan Order;
+var eventRemoveCallUpAndCallDownOrders chan bool;
 
 var workerNewOrder 				chan Order;
 var workerOrdersExecutedOnFloor chan int;
@@ -48,6 +51,7 @@ func Initialize(eventNewDestinationOrderArg chan Order,
 				eventCostRequestArg chan Order,
 				eventOrdersExecutedOnFloorBySomeoneArg chan int,
 				eventDestinationOrderTakenBySomeoneArg chan Order,
+				eventRemoveCallUpAndCallDownOrdersArg chan bool,
 
 				workerNewOrderArg chan Order,
 				workerCostResponseArg chan int,
@@ -66,9 +70,11 @@ func Initialize(eventNewDestinationOrderArg chan Order,
 	eventButtonFloorPressed = make(chan ButtonFloor);
 	
 	eventNewDestinationOrder 	= eventNewDestinationOrderArg;
+
 	eventCostRequest 			= eventCostRequestArg;
 	eventOrdersExecutedOnFloorBySomeone = eventOrdersExecutedOnFloorBySomeoneArg;
 	eventDestinationOrderTakenBySomeone = eventDestinationOrderTakenBySomeoneArg;
+	eventRemoveCallUpAndCallDownOrders = eventRemoveCallUpAndCallDownOrdersArg;
 
 	workerNewOrder 				= workerNewOrderArg;
 	workerCostResponse 			= workerCostResponseArg;
@@ -439,6 +445,29 @@ func handleEventCostRequest(order Order) {
 
 //-----------------------------------------------//
 
+func handleEventRemoveCallUpAndCallDownOrders() {
+
+		switch currentState {
+		case STATE_STARTUP:
+
+			log.Warning("Tried remove call up and down orders at startup.");
+
+		case STATE_IDLE:
+
+			ordersLocal.RemoveCallUpAndCallDown();
+
+		case STATE_MOVING:
+
+			ordersLocal.RemoveCallUpAndCallDown();
+
+		case STATE_DOOR_OPEN:
+
+			ordersLocal.RemoveCallUpAndCallDown();
+	}
+}
+
+//-----------------------------------------------//
+
 func stateMachine() {
 
 	for {
@@ -480,6 +509,10 @@ func stateMachine() {
 
 				handleEventOrdersExectuedOnFloorBySomeone(floor);
 				Display();
+
+			case <- eventRemoveCallUpAndCallDownOrders:
+
+				handleEventRemoveCallUpAndCallDownOrders();
 
 			case order := <- eventCostRequest:
 

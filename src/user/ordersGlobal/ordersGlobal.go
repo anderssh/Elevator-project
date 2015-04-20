@@ -7,12 +7,13 @@ import(
 
 //-----------------------------------------------//
 
-type OrderGlobal struct {
-	IPAddr 	string;
-	order 	Order;
-}
+var orders []OrderGlobal = make([]OrderGlobal, 0, 1);
 
-var orders []Order = make([]Order, 0, 1);
+//-----------------------------------------------//
+
+func MakeFromOrder(order Order, responsibleWorkerIPAddr string) OrderGlobal {
+	return OrderGlobal{ ResponsibleWorkerIPAddr : responsibleWorkerIPAddr, Type : order.Type, Floor : order.Floor };
+}
 
 //-----------------------------------------------//
 
@@ -27,8 +28,36 @@ func AlreadyStored(order Order) bool {
 	return false;
 }
 
-func Add(order Order) {
+func Add(order OrderGlobal) {
 	orders = append(orders, order);
+}
+
+//-----------------------------------------------//
+
+func UpdateResponsibility(order OrderGlobal) {
+
+	for orderIndex := range orders {
+		if orders[orderIndex].Type == order.Type  && orders[orderIndex].Floor == order.Floor {
+			orders[orderIndex].ResponsibleWorkerIPAddr = order.ResponsibleWorkerIPAddr;
+			return;
+		}
+	}
+}
+
+func ResetResponsibilityOnWorkerIPAddr(workerIPAddr string) {
+
+	for orderIndex := range orders {
+		if orders[orderIndex].ResponsibleWorkerIPAddr == workerIPAddr {
+			orders[orderIndex].ResponsibleWorkerIPAddr = "";
+		}
+	}
+}
+
+func ResetAllResponsibilities() {
+
+	for orderIndex := range orders {
+		orders[orderIndex].ResponsibleWorkerIPAddr = "";
+	}
 }
 
 //-----------------------------------------------//
@@ -50,6 +79,66 @@ func RemoveOnFloor(floor int) {
 
 		} else {
 			break;
+		}
+	}
+}
+
+//-----------------------------------------------//
+
+func GetAll() []OrderGlobal {
+	return orders;
+}
+
+func SetNewList(newOrders []OrderGlobal) {
+	orders = newOrders;
+}
+
+//-----------------------------------------------//
+
+func HasOrderToRedistribute() bool {
+
+	for orderIndex := range orders {
+		if orders[orderIndex].ResponsibleWorkerIPAddr == "" {
+			return true;
+		}
+	} 
+
+	return false;
+}
+
+func GetOrderToRedistribute() OrderGlobal {
+
+	for orderIndex := range orders {
+		if orders[orderIndex].ResponsibleWorkerIPAddr == "" {
+			return orders[orderIndex];
+		}
+	}
+
+	return OrderGlobal{}; // Fix this
+}
+
+//-----------------------------------------------//
+
+func MergeWith(ordersToMerge []OrderGlobal) {
+
+	// Add all orders not currently in list
+	for orderToMergeIndex := range ordersToMerge {
+
+		orderToMerge := ordersToMerge[orderToMergeIndex];
+		orderToMergeAllreadyStored := false;
+
+		for orderIndex := range orders {
+
+			order := orders[orderIndex];
+
+			if order.Type == orderToMerge.Type && order.Floor == orderToMerge.Floor {
+				orderToMergeAllreadyStored = true;
+				continue;
+			}
+		}
+
+		if !orderToMergeAllreadyStored {
+			orders = append(orders, orderToMerge);
 		}
 	}
 }

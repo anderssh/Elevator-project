@@ -57,14 +57,20 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 	var order Order;
 	err := JSON.Decode(message.Data, &order);
 
-	if err != nil {}
+	if err != nil {
+		log.Error(err);
+	}
+
+	orderGlobal := ordersGlobal.MakeFromOrder(order, network.GetLocalIPAddr());
 
 	if ordersUnconfirmed.AlreadyStored(order) {
 		ordersUnconfirmed.Remove(order);
 	}
 
 	if !ordersGlobal.AlreadyStored(order) {
-		ordersGlobal.Add(order);
+		ordersGlobal.Add(orderGlobal);
+	} else {
+		ordersGlobal.UpdateResponsibility(orderGlobal);
 	}
 
 	elevatorEventNewDestinationOrder <- order;
@@ -76,19 +82,23 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevato
 
 	log.Data("Worker: Some has taken a order");
 
-	var order Order;
-	err := JSON.Decode(message.Data, &order);
+	var orderGlobal OrderGlobal;
+	err := JSON.Decode(message.Data, &orderGlobal);
 
 	if err != nil {
 		log.Error(err);
 	}
 
-	if ordersUnconfirmed.AlreadyStored(order) {
-		ordersUnconfirmed.Remove(order);
-	}
+	order := Order{ Type : orderGlobal.Type, Floor : orderGlobal.Floor };
 
 	if !ordersGlobal.AlreadyStored(order) {
-		ordersGlobal.Add(order);
+		ordersGlobal.Add(orderGlobal);
+	} else {
+		ordersGlobal.UpdateResponsibility(orderGlobal);
+	}
+
+	if ordersUnconfirmed.AlreadyStored(order) {
+		ordersUnconfirmed.Remove(order);
 	}
 
 	elevatorDestinationOrderTakenBySomeone <- order;
@@ -151,8 +161,22 @@ func workerHandleElevatorCostResponse(cost int, transmitChannel chan network.Mes
 
 //-----------------------------------------------//
 
-func workerHandleDistributorChange(message network.Message) {
+func workerHandleDistributorChange(message network.Message, elevatorRemoveCallUpAndCallDownOrders chan bool) {
 
-	log.Data("Worker: I have a new distributor now", message.SenderIPAddr);
+	log.Data("Worker: I have a new distributor now", message.SenderIPAddr, "delete all call up and down orders.");
+	
 	distributorIPAddr = message.SenderIPAddr;
+
+	log.Data("Worker: Updating global orderlist");
+
+	var newOrdersGlobal []OrderGlobal;
+	err := JSON.Decode(message.Data, &newOrdersGlobal);
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	ordersGlobal.SetNewList(newOrdersGlobal);
+
+	elevatorRemoveCallUpAndCallDownOrders <- true;
 }

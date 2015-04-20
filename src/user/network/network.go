@@ -108,7 +108,7 @@ func udpListen(IPAddr string, messageChannel chan<- Message) {
 		}
 	}();
 
-	messageBuffer := make([]byte, 1024);
+	messageBuffer := make([]byte, 4096);
 
 	for {
 		messageLength, _, err := listenConnection.ReadFromUDP(messageBuffer);
@@ -177,7 +177,7 @@ func udpListenWithTimeout(IPAddr string, messageChannel chan<- Message, deadline
 		}
 	}();
 
-	messageBuffer := make([]byte, 1024);
+	messageBuffer := make([]byte, 4096);
 
 	for {
 		messageLength, _, err := listenConnection.ReadFromUDP(messageBuffer);
@@ -243,23 +243,24 @@ func UDPTransmitServer(transmitChannel chan Message) {
 
 //-----------------------------------------------//
 
-func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
+func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr *net.TCPAddr, remoteIPAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
 
-	messageBuffer := make([]byte, 1024);
+	messageBuffer := make([]byte, 4096);
 
 	for {
 		messageLength, err := listenConnection.Read(messageBuffer);
 	
 		if err != nil || messageLength < 0 {
 
-			log.Error("Error when reading from TCP.");
+			log.Error("Network: Error when reading from TCP.");
 
 			tcpConnectionsMutex.Lock();
 			listenConnection.Close();
-			delete(tcpConnections, remoteAddr);
+			delete(tcpConnections, remoteAddr.String());
 			tcpConnectionsMutex.Unlock();
 
-			eventDisconnect <- remoteAddr;
+			eventDisconnect <- remoteIPAddr;
+
 			return;
 
 		} else {
@@ -273,7 +274,6 @@ func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr string, mes
 	}
 }
 
-
 func tcpListen(IPAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
 
 	serverAddr, _     		:= net.ResolveTCPAddr("tcp", IPAddr + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
@@ -285,17 +285,20 @@ func tcpListen(IPAddr string, messageChannel chan<- Message, eventDisconnect cha
 
 	for {
 
-		log.DataWithColor(log.COLOR_GREEN, "Waiting for new connect");
+		log.DataWithColor(log.COLOR_GREEN, "Network: Waiting for new connect");
+
 		listenConnection, _ := serverConnection.AcceptTCP();
-		remoteAddr 			:= listenConnection.RemoteAddr().String();
-		log.DataWithColor(log.COLOR_GREEN, remoteAddr);
+		remoteAddrRaw 		:= listenConnection.RemoteAddr();
+		remoteAddr, _ 		:= net.ResolveTCPAddr("tcp", remoteAddrRaw.String());
+		remoteIPAddr 		:= remoteAddr.IP.String();
+
+		log.DataWithColor(log.COLOR_GREEN, "Network: Connected to", remoteIPAddr);
+
 		tcpConnectionsMutex.Lock();
-		tcpConnections[remoteAddr] = listenConnection;
+		tcpConnections[remoteAddr.String()] = listenConnection;
 		tcpConnectionsMutex.Unlock();
 
-		log.DataWithColor(log.COLOR_GREEN, "Connected");
-
-		go tcpListenOnConnection(listenConnection, remoteAddr, messageChannel, eventDisconnect);
+		go tcpListenOnConnection(listenConnection, remoteAddr, remoteIPAddr, messageChannel, eventDisconnect);
 	}
 }
 
@@ -327,13 +330,7 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 
 //-----------------------------------------------//
 
-func tcpConnectTo(remoteAddrRaw string, eventDisconnect chan string) {
-
-	remoteAddr, err := net.ResolveTCPAddr("tcp", remoteAddrRaw + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
-
-	if err != nil {
-		log.Error(err);
-	}
+func tcpConnectTo(remoteAddr *net.TCPAddr, remoteIPAddr string, eventDisconnect chan string) {
 
 	for {
 
@@ -341,17 +338,17 @@ func tcpConnectTo(remoteAddrRaw string, eventDisconnect chan string) {
 
 		if err != nil {
 			
-			log.Error("Could not dial tcp", remoteAddrRaw, remoteAddr);
+			log.Error("Network: Could not dial tcp", remoteIPAddr, remoteAddr);
 			log.Error(err)
 
-			eventDisconnect <- remoteAddrRaw;
+			eventDisconnect <- remoteIPAddr;
 			
 			return;
 
 		} else {
 
 			tcpConnectionsMutex.Lock();
-			tcpConnections[remoteAddrRaw] = connection;
+			tcpConnections[remoteAddr.String()] = connection;
 			tcpConnectionsMutex.Unlock();
 
 			return;
@@ -365,24 +362,30 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 		select {
 			case message := <- transmitChannel:
 
-				_, connectionExists := tcpConnections[message.DestinationIPAddr];
+				remoteAddr, err 	:= net.ResolveTCPAddr("tcp", message.DestinationIPAddr + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
+
+				if err != nil {
+					log.Error(err);
+				}
+
+				_, connectionExists := tcpConnections[remoteAddr.String()];
 
 				if !connectionExists {
-					tcpConnectTo(message.DestinationIPAddr, eventDisconnect);
+					tcpConnectTo(remoteAddr, message.DestinationIPAddr, eventDisconnect);
 				}
 
 				tcpConnectionsMutex.Lock();
 
-				sendConnection, _ := tcpConnections[message.DestinationIPAddr];
+				sendConnection, _ := tcpConnections[remoteAddr.String()];
 				encodedMessage, _ := JSON.Encode(message);
-				n, err 			  :=sendConnection.Write(encodedMessage);
+				n, err 			  := sendConnection.Write(encodedMessage);
 
 				tcpConnectionsMutex.Unlock();
 
 				if err != nil || n < 0 {
 					tcpConnectionsMutex.Lock();
 					sendConnection.Close();
-					delete(tcpConnections, message.DestinationIPAddr);
+					delete(tcpConnections, remoteAddr.String());
 					tcpConnectionsMutex.Unlock();
 				}
 		}

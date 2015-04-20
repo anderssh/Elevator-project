@@ -14,6 +14,7 @@ var elevatorNewDestinationOrder chan Order;
 var elevatorCostRequest chan Order;
 var elevatorOrdersExecutedOnFloorBySomeone chan int;
 var elevatorDestinationOrderTakenBySomeone chan Order;
+var elevatorRemoveCallUpAndCallDownOrders chan bool;
 
 var eventElevatorNewOrder chan Order;
 var eventElevatorCostResponse chan int;
@@ -27,6 +28,7 @@ func Initialize() {
 	elevatorCostRequest 			= make(chan Order, 10);
 	elevatorOrdersExecutedOnFloorBySomeone = make(chan int);
 	elevatorDestinationOrderTakenBySomeone = make(chan Order);
+	elevatorRemoveCallUpAndCallDownOrders = make(chan bool);
 
 	eventElevatorNewOrder 			= make(chan Order);
 	eventElevatorCostResponse 		= make(chan int, 10);
@@ -36,6 +38,7 @@ func Initialize() {
 									elevatorCostRequest,
 									elevatorOrdersExecutedOnFloorBySomeone,
 									elevatorDestinationOrderTakenBySomeone,
+									elevatorRemoveCallUpAndCallDownOrders,
 
 									eventElevatorNewOrder,
 									eventElevatorCostResponse,
@@ -91,6 +94,8 @@ func Run() {
 	addServerRecipientChannel <- distributorMergeRequestRecipient;
 	addServerRecipientChannel <- distributorMergeDataRecipient;
 
+	eventRedistributeOrder := make(chan bool);
+
 	//------------------------------	-----------------//
 
 	distributorActiveNotificationRecipient := network.Recipient{ ID : "distributorActiveNotification", 		ReceiveChannel : make(chan network.Message) };
@@ -131,7 +136,7 @@ func Run() {
 
 			case disconnectIPAddr := <- eventDisconnect:
 
-				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannel);
+				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannel, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 			// Distribute order
@@ -140,6 +145,10 @@ func Run() {
 
 				distributorDisplayWorkers();
 				distributorHandleNewOrder(message, transmitChannel);
+
+			case <- eventRedistributeOrder:
+
+				distributorHandleRedistributionOfOrder(transmitChannel);
 			
 			case message := <- distributorCostResponseRecipient.ReceiveChannel:
 
@@ -149,7 +158,7 @@ func Run() {
 			case message := <- distributorOrderTakenConfirmationRecipient.ReceiveChannel:
 
 				distributorDisplayWorkers();
-				distributorHandleOrderTakenConfirmation(message, transmitChannel);
+				distributorHandleOrderTakenConfirmation(message, transmitChannel, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 
@@ -174,7 +183,7 @@ func Run() {
 
 			case message := <- distributorMergeDataRecipient.ReceiveChannel:
 
-				distributorHandleMergeData(message, transmitChannel);
+				distributorHandleMergeData(message, transmitChannel, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 			//-----------------------------------------------//
@@ -223,7 +232,7 @@ func Run() {
 
 			case message := <- workerChangeDistributorRecipient.ReceiveChannel:
 				
-				workerHandleDistributorChange(message);
+				workerHandleDistributorChange(message, elevatorRemoveCallUpAndCallDownOrders);
 		}
 	}
 

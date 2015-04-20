@@ -5,9 +5,11 @@ import(
 	"user/network"
 	"user/config"
 	"user/log"
+	"user/ordersGlobal"
 	"user/encoder/JSON"
 	"strings"
 	"strconv"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -115,45 +117,45 @@ func distributorInitialize(transmitChannel chan network.Message) {
 
 //-----------------------------------------------//
 
-func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message) {
+func returnToStateIdle(eventRedistributeOrder chan bool) {
 
-	switch currentState {
-		case STATE_IDLE:
-
-			log.Data("Distributor: disconnected in IDLE")
-			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
-
-
-		case STATE_AWAITING_COST_RESPONSE:
-
-			log.Data("Distributor: disconnected in AWAITING COST RESPONSE")
-
-			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
-			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
-
-			currentState = STATE_IDLE;
-
-		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
-
-			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
-			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
-
-			currentState = STATE_IDLE;
-
-		case STATE_INACTIVE:
-
-			log.Data("Distributor: disconnected in INACTIVE")
-
-			distributorInitialize(transmitChannel);
-
-			currentState = STATE_IDLE;
+	if ordersGlobal.HasOrderToRedistribute() {
+		time.AfterFunc(time.Millisecond * 50, func() { eventRedistributeOrder <- true });
 	}
+
+	currentState = STATE_IDLE;
 }
 
 //-----------------------------------------------//
 // Order handling
+
+func distributorHandleRedistributionOfOrder(transmitChannel chan network.Message) {
+		
+	switch currentState {
+		case STATE_IDLE:
+
+			if ordersGlobal.HasOrderToRedistribute() {
+
+				log.Data("Distributor: Got new order to redistribute.")
+
+				orderToRedistribute := ordersGlobal.GetOrderToRedistribute();
+			
+				currentlyHandledOrder = Order{ Type : orderToRedistribute.Type, Floor : orderToRedistribute.Floor };
+				orderEncoded, _ := JSON.Encode(currentlyHandledOrder);
+
+				currentState = STATE_AWAITING_COST_RESPONSE;
+
+				for worker := range workerIPAddrs {
+					transmitChannel <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
+				}
+			}
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+	}
+}
 
 func distributorHandleNewOrder(message network.Message, transmitChannel chan network.Message) {
 	
@@ -221,7 +223,7 @@ func distributorHandleCostResponse(message network.Message, transmitChannel chan
 
 //-----------------------------------------------//
 
-func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -232,23 +234,26 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 			log.Data("Distributor: Got order taken Confirmation")
 
-			var takenOrder Order;
-			err := JSON.Decode(message.Data, &takenOrder);
+			var order Order;
+			err := JSON.Decode(message.Data, &order);
 
 			if err != nil {
 				log.Error(err, "Decode error");
 			}
 
 			// Distribute to others for global storage
+			orderGlobal := ordersGlobal.MakeFromOrder(order, message.SenderIPAddr);
+			orderGlobalEncoded, _ := JSON.Encode(orderGlobal);
+
 			for costBidIndex := 1; costBidIndex < len(costBids); costBidIndex++ {
-				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", message.Data, costBids[costBidIndex].SenderIPAddr);
+				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", orderGlobalEncoded, costBids[costBidIndex].SenderIPAddr);
 			}
 
 			// Clean up
 			costBids = make([]CostBid, 0, 1);
 			currentlyHandledOrder = Order{ -1, -1 };
 
-			currentState = STATE_IDLE;
+			returnToStateIdle(eventRedistributeOrder);
 	}
 }
 
@@ -278,6 +283,13 @@ func distributorHandleActiveNotificationTick(broadcastChannel chan network.Messa
 
 //-----------------------------------------------//
 
+type MergeData struct {
+	WorkerIPAddrs 	[]string
+	Orders 			[]OrderGlobal
+}
+
+var mergeIPAddr string;
+
 func distributorHandleActiveNotification(message network.Message, transmitChannel chan network.Message) {
 
 	switch currentState {
@@ -291,11 +303,12 @@ func distributorHandleActiveNotification(message network.Message, transmitChanne
 
 			if IPAddrEndingLocal > IPAddrEndingSender {
 
-				log.Data("Distributor: Merge with", message.SenderIPAddr);
-				messageMerge, _ := JSON.Encode("Merge");
-				transmitChannel <- network.MakeMessage("distributorMergeRequest", messageMerge, message.SenderIPAddr);
-
 				currentState = STATE_AWAITING_MERGE_DATA;
+
+				mergeIPAddr = message.SenderIPAddr;
+
+				log.Data("Distributor: Merge with", mergeIPAddr);
+				transmitChannel <- network.MakeMessage("distributorMergeRequest", make([]byte, 0, 1), mergeIPAddr);
 			}
 	}
 }
@@ -307,15 +320,16 @@ func distributorHandleMergeRequest(message network.Message, transmitChannel chan
 
 			log.Data("Distributor: Going into inactive some else is my distributor now.");
 
-			workerIPAddrsEncoded, _ := JSON.Encode(workerIPAddrs);
+			mergeData := MergeData{ WorkerIPAddrs : workerIPAddrs, Orders : ordersGlobal.GetAll() };
+			mergeDataEncoded, _ := JSON.Encode(mergeData);
 
-			transmitChannel <- network.MakeMessage("distributorMergeData", workerIPAddrsEncoded, message.SenderIPAddr);
+			transmitChannel <- network.MakeMessage("distributorMergeData", mergeDataEncoded, message.SenderIPAddr);
 
 			currentState = STATE_INACTIVE;
 	}
 }
 
-func distributorHandleMergeData(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleMergeData(message network.Message, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 
@@ -323,20 +337,94 @@ func distributorHandleMergeData(message network.Message, transmitChannel chan ne
 
 			log.Data("Distributor: Merge data received");
 
-			var newWorkerIPAddrs []string;
-			err := JSON.Decode(message.Data, &newWorkerIPAddrs);
+			var mergeData MergeData;
+			err := JSON.Decode(message.Data, &mergeData);
 
 			if err != nil {
 				log.Error(err);
 			}
 
-			workerIPAddrs = append(workerIPAddrs, newWorkerIPAddrs ...);
+			ordersGlobal.MergeWith(mergeData.Orders);
+			ordersGlobal.ResetAllResponsibilities();
 
-			for worker := range newWorkerIPAddrs {
-				log.Data("Distributor: has new worker", newWorkerIPAddrs[worker]);
-				transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), newWorkerIPAddrs[worker]);
+			log.Data("Distributor: merged, now notify new workers");
+			workerIPAddrs = append(workerIPAddrs, mergeData.WorkerIPAddrs ...);
+
+			ordersGlobalEncoded, _ := JSON.Encode(ordersGlobal.GetAll());
+
+			for worker := range mergeData.WorkerIPAddrs {
+				log.Data("Distributor: has new worker", mergeData.WorkerIPAddrs[worker]);
+				transmitChannel <- network.MakeMessage("workerChangeDistributor", ordersGlobalEncoded, mergeData.WorkerIPAddrs[worker]);
 			}
 
-			currentState = STATE_IDLE;
+			mergeIPAddr = "";
+
+			returnToStateIdle(eventRedistributeOrder);
+	}
+}
+
+//-----------------------------------------------//
+// Disconnect
+
+func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
+
+	switch currentState {
+		case STATE_IDLE:
+
+			log.Data("Distributor: disconnected in idle", disconnectIPAddr);
+			
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+
+			ordersGlobal.ResetResponsibilityOnWorkerIPAddr(disconnectIPAddr);
+
+			returnToStateIdle(eventRedistributeOrder);
+
+		case STATE_AWAITING_COST_RESPONSE:
+
+			log.Data("Distributor: disconnected while waiting for cost response, aborting...");
+
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+
+			ordersGlobal.ResetResponsibilityOnWorkerIPAddr(disconnectIPAddr);
+
+			returnToStateIdle(eventRedistributeOrder);
+
+		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
+
+			log.Data("Distributor: disconnected while waiting for order taken confirmation, aborting...");
+
+			costBids = make([]CostBid, 0, 1);
+			currentlyHandledOrder = Order{ -1, -1 };
+
+			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
+
+			ordersGlobal.ResetResponsibilityOnWorkerIPAddr(disconnectIPAddr);
+
+			returnToStateIdle(eventRedistributeOrder);
+
+		case STATE_AWAITING_MERGE_DATA:
+
+			if disconnectIPAddr == mergeIPAddr {
+
+				mergeIPAddr = "";
+
+				returnToStateIdle(eventRedistributeOrder);
+			}
+
+		case STATE_INACTIVE:
+
+			if disconnectIPAddr == distributorIPAddr {
+
+				log.Data("Distributor: disconnected in INACTIVE. I am now a distributor.");
+
+				distributorInitialize(transmitChannel);
+
+				ordersGlobal.ResetAllResponsibilities();
+
+				returnToStateIdle(eventRedistributeOrder);
+			}
 	}
 }
