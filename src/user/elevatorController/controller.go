@@ -134,7 +134,7 @@ func Run() {
 
 			case disconnectIPAddr := <- eventDisconnect:
 
-				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannel);
+				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannel, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 			// Distribute order

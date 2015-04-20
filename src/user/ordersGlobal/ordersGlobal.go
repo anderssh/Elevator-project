@@ -34,6 +34,34 @@ func Add(order OrderGlobal) {
 
 //-----------------------------------------------//
 
+func UpdateResponsibility(order OrderGlobal) {
+
+	for orderIndex := range orders {
+		if orders[orderIndex].Type == order.Type  && orders[orderIndex].Floor == order.Floor {
+			orders[orderIndex].ResponsibleWorkerIPAddr = order.ResponsibleWorkerIPAddr;
+			return;
+		}
+	}
+}
+
+func ResetResponsibilityOnWorkerIPAddr(workerIPAddr string) {
+
+	for orderIndex := range orders {
+		if orders[orderIndex].ResponsibleWorkerIPAddr == workerIPAddr {
+			orders[orderIndex].ResponsibleWorkerIPAddr = "";
+		}
+	}
+}
+
+func ResetAllResponsibilities() {
+
+	for orderIndex := range orders {
+		orders[orderIndex].ResponsibleWorkerIPAddr = "";
+	}
+}
+
+//-----------------------------------------------//
+
 func RemoveOnFloor(floor int) {
 	
 	orderIndex := 0;
@@ -59,6 +87,10 @@ func RemoveOnFloor(floor int) {
 
 func GetAll() []OrderGlobal {
 	return orders;
+}
+
+func SetNewList(newOrders []OrderGlobal) {
+	orders = newOrders;
 }
 
 //-----------------------------------------------//
@@ -89,9 +121,6 @@ func GetOrderToRedistribute() OrderGlobal {
 
 func MergeWith(ordersToMerge []OrderGlobal) {
 
-	log.Data("orders:", orders);
-	log.Data("ordersToMerge:", ordersToMerge);
-
 	// Add all orders not currently in list
 	for orderToMergeIndex := range ordersToMerge {
 
@@ -112,13 +141,6 @@ func MergeWith(ordersToMerge []OrderGlobal) {
 			orders = append(orders, orderToMerge);
 		}
 	}
-
-	// Reset responisbilities so one can redistribute
-	for orderIndex := range orders {
-		orders[orderIndex].ResponsibleWorkerIPAddr = "";
-	}
-
-	log.Data("ordersPost:", orders);
 }
 
 //-----------------------------------------------//
