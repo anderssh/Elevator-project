@@ -6,6 +6,7 @@ import(
 	"user/network"
 	"time"
 	"user/config"
+	"user/log"
 );
 
 //-----------------------------------------------//
@@ -16,6 +17,7 @@ var elevatorOrdersExecutedOnFloorBySomeone chan int;
 var elevatorDestinationOrderTakenBySomeone chan Order;
 var elevatorRemoveCallUpAndCallDownOrders chan bool;
 
+var eventElevatorExitsStartup chan bool;
 var eventElevatorNewOrder chan Order;
 var eventElevatorCostResponse chan int;
 var eventElevatorOrdersExecutedOnFloor chan int;
@@ -30,6 +32,7 @@ func Initialize() {
 	elevatorDestinationOrderTakenBySomeone = make(chan Order);
 	elevatorRemoveCallUpAndCallDownOrders = make(chan bool);
 
+	eventElevatorExitsStartup 		= make(chan bool);
 	eventElevatorNewOrder 			= make(chan Order);
 	eventElevatorCostResponse 		= make(chan int, 10);
 	eventElevatorOrdersExecutedOnFloor = make(chan int);
@@ -40,6 +43,7 @@ func Initialize() {
 									elevatorDestinationOrderTakenBySomeone,
 									elevatorRemoveCallUpAndCallDownOrders,
 
+									eventElevatorExitsStartup,
 									eventElevatorNewOrder,
 									eventElevatorCostResponse,
 									eventElevatorOrdersExecutedOnFloor);
@@ -133,6 +137,11 @@ func Run() {
 			// Distributor
 			//-----------------------------------------------//
 			//-----------------------------------------------//
+
+			case <- eventElevatorExitsStartup:
+
+				log.Data("Distributor: Exits startup");
+				currentState = STATE_IDLE;
 
 			case disconnectIPAddr := <- eventDisconnect:
 

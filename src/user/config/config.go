@@ -7,6 +7,8 @@ import(
 const(
 	MASTER_ALIVE_NOTIFICATION_DELAY 	time.Duration 	=	time.Millisecond * 40
 
+	REGISTER_ELEVATOR_EVENT_SLEEP		time.Duration 	= 	time.Millisecond * 10;
+
 	NUMBER_OF_FLOORS		 			int 			= 	4
 	ELEVATOR_DOOR_OPEN_DURATION 		time.Duration 	= 	time.Second * 3
 

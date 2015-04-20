@@ -42,10 +42,9 @@ func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannel chan 
 	log.Data("Worker: Did not receive confirmation on the order I sent up");
 
 	orderEncoded, _ := JSON.Encode(order);
-	ordersUnconfirmed.ResetTimer(order, eventUnconfirmedOrderTimeout)
+	ordersUnconfirmed.ResetTimer(order, eventUnconfirmedOrderTimeout);
 
 	transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
-
 }
 
 //-----------------------------------------------//

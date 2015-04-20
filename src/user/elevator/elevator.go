@@ -270,6 +270,7 @@ func registerEventButtonFloorPressed(eventButtonFloorPressed chan ButtonFloor) {
 
 				if button.IsPressed() {
 					eventButtonFloorPressed <- button;
+					return;
 				}
 			}
 		}
@@ -289,6 +290,6 @@ func RegisterEvents(eventReachedNewFloor 	chan int,
 		registerEventObstruction(eventObstruction);
 		registerEventButtonFloorPressed(eventButtonFloorPressed);
 
-		time.Sleep(time.Microsecond * 50);
+		time.Sleep(config.REGISTER_ELEVATOR_EVENT_SLEEP);
 	}
 }

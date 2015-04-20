@@ -45,6 +45,8 @@ var workerOrdersExecutedOnFloor chan int;
 var eventCostRequest			chan Order;
 var workerCostResponse 			chan int;
 
+var workerExitsStartup 			chan bool;
+
 //-----------------------------------------------//
 
 func Initialize(eventNewDestinationOrderArg chan Order,
@@ -53,6 +55,7 @@ func Initialize(eventNewDestinationOrderArg chan Order,
 				eventDestinationOrderTakenBySomeoneArg chan Order,
 				eventRemoveCallUpAndCallDownOrdersArg chan bool,
 
+				workerExitsStartupArg chan bool,
 				workerNewOrderArg chan Order,
 				workerCostResponseArg chan int,
 				workerOrdersExecutedOnFloorArg chan int) {
@@ -76,6 +79,7 @@ func Initialize(eventNewDestinationOrderArg chan Order,
 	eventDestinationOrderTakenBySomeone = eventDestinationOrderTakenBySomeoneArg;
 	eventRemoveCallUpAndCallDownOrders = eventRemoveCallUpAndCallDownOrdersArg;
 
+	workerExitsStartup 			= workerExitsStartupArg;
 	workerNewOrder 				= workerNewOrderArg;
 	workerCostResponse 			= workerCostResponseArg;
 	workerOrdersExecutedOnFloor = workerOrdersExecutedOnFloorArg;
@@ -180,8 +184,10 @@ func handleEventReachedNewFloor(floorReached int) {
 		case STATE_STARTUP:
 
 			elevator.Stop()
-
 			elevator.SetLastReachedFloor(floorReached);
+
+			workerExitsStartup <- true;
+
 			currentState = STATE_IDLE;
 
 		case STATE_IDLE:

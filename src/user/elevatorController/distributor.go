@@ -17,7 +17,9 @@ import(
 type State int
 
 const (
+	STATE_STARTUP 								State = iota
 	STATE_IDLE   								State = iota
+	
 	STATE_AWAITING_COST_RESPONSE   				State = iota
 	STATE_AWAITING_ORDER_TAKEN_CONFIRMATION		State = iota
 
@@ -162,6 +164,7 @@ func distributorHandleNewOrder(message network.Message, transmitChannel chan net
 	switch currentState {
 		case STATE_IDLE:
 			
+			log.Error("Take")
 			log.Data("Distributor: Got new order to distribute")
 
 			orderEncoded := message.Data;
@@ -261,10 +264,16 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitChannel chan network.Message) {
 
-	log.Data("Distributor: orders on floor executed by someone");
+	switch currentState {
 
-	for worker := range workerIPAddrs {
-		transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloorBySomeone", message.Data, workerIPAddrs[worker]);
+		case STATE_STARTUP:
+
+		default:
+			log.Data("Distributor: orders on floor executed by someone");
+
+			for worker := range workerIPAddrs {
+				transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloorBySomeone", message.Data, workerIPAddrs[worker]);
+			}
 	}
 }
 

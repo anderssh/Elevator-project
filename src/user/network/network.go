@@ -315,7 +315,7 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 				
 				for recipientIndex := range recipients {
 					if message.RecipientID == recipients[recipientIndex].ID {
-						
+						log.Data("                       got", message.RecipientID)
 						recipients[recipientIndex].ReceiveChannel <- message;
 						break;
 					}
@@ -332,27 +332,24 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 
 func tcpConnectTo(remoteAddr *net.TCPAddr, remoteIPAddr string, eventDisconnect chan string) {
 
-	for {
+	connection, err := net.DialTCP("tcp", nil, remoteAddr);
 
-		connection, err := net.DialTCP("tcp", nil, remoteAddr);
+	if err != nil {
+		
+		log.Error("Network: Could not dial tcp", remoteIPAddr, remoteAddr);
+		log.Error(err)
 
-		if err != nil {
-			
-			log.Error("Network: Could not dial tcp", remoteIPAddr, remoteAddr);
-			log.Error(err)
+		eventDisconnect <- remoteIPAddr;
+		
+		return;
 
-			eventDisconnect <- remoteIPAddr;
-			
-			return;
+	} else {
 
-		} else {
+		tcpConnectionsMutex.Lock();
+		tcpConnections[remoteAddr.String()] = connection;
+		tcpConnectionsMutex.Unlock();
 
-			tcpConnectionsMutex.Lock();
-			tcpConnections[remoteAddr.String()] = connection;
-			tcpConnectionsMutex.Unlock();
-
-			return;
-		}
+		return;
 	}
 }
 
@@ -367,7 +364,7 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 				if err != nil {
 					log.Error(err);
 				}
-
+				log.Data("sent", message.RecipientID)
 				_, connectionExists := tcpConnections[remoteAddr.String()];
 
 				if !connectionExists {

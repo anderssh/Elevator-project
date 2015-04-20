@@ -1,6 +1,7 @@
 package typeDefinitions;
 
 import(
+	"time"
 	"user/io"
 );
 
@@ -26,6 +27,12 @@ const(
 type Order struct {
 	Type 	OrderType
 	Floor	int
+}
+
+type OrderUnconfirmed struct {
+	Timer	*time.Timer
+	Type 	OrderType
+	Floor 	int
 }
 
 type OrderGlobal struct {
