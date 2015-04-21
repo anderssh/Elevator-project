@@ -9,11 +9,47 @@ import(
 	"user/network"
 	"time"
 	"user/encoder/JSON"
+	"io/ioutil"
 );
 
 //-----------------------------------------------//
 
-func handleBackupDataOrders(message network.Message, backupDataOrders OrdersBackup) OrdersBackup {
+func initializeBackupDataOrders() OrdersBackup {
+
+	backupDataOrdersEncoded, err := ioutil.ReadFile(config.BACKUP_FILE_NAME);
+
+	if err != nil { 			// Did not open file, most likely not created yet
+		log.Error(err);
+		return OrdersBackup{ Orders : make([]Order, 0, 1) };
+	}
+
+	var backupDataOrders OrdersBackup;
+	err = JSON.Decode(backupDataOrdersEncoded, &backupDataOrders);
+
+	if err != nil { 			// Corrupt or empty file
+		log.Error(err);
+		return OrdersBackup{ Orders : make([]Order, 0, 1) };	
+	}
+
+	return backupDataOrders;
+}
+
+func writeBackupDataOrdersToFile(writeBackupDataOrders chan []byte) {
+
+	for {
+		dataToWrite := <- writeBackupDataOrders;
+
+		ioutil.WriteFile(config.BACKUP_FILE_NAME, dataToWrite, 0644); // 0644: for read/write permissions
+	}
+}
+
+func initializeBackupDataOrdersGlobal() OrdersGlobalBackup {
+	return OrdersGlobalBackup{ Orders : make([]OrderGlobal, 0, 1) };
+}
+
+//-----------------------------------------------//
+
+func handleBackupDataOrders(message network.Message, backupDataOrders OrdersBackup, writeBackupDataOrders chan []byte) OrdersBackup {
 
 	var dataReceived OrdersBackup;
 	err := JSON.Decode(message.Data, &dataReceived);
@@ -23,7 +59,11 @@ func handleBackupDataOrders(message network.Message, backupDataOrders OrdersBack
 	}
 
 	if dataReceived.Timestamp >= backupDataOrders.Timestamp {
+		
 		log.Data("Backup process: new backup data destination orders received.");
+		
+		writeBackupDataOrders <- message.Data;
+
 		return dataReceived;
 	} else {
 		return backupDataOrders;
@@ -53,8 +93,12 @@ func backupProcess() {
 
 	log.Data("Backup process: starting...");
 
-	backupDataOrders 		:= OrdersBackup{ Orders : make([]Order, 0, 1) };
-	backupDataOrdersGlobal 	:= OrdersGlobalBackup{ Orders : make([]OrderGlobal, 0, 1) };
+	writeBackupDataOrders := make(chan []byte, 1000);
+
+	go writeBackupDataOrdersToFile(writeBackupDataOrders);
+
+	backupDataOrders 		:= initializeBackupDataOrders();
+	backupDataOrdersGlobal 	:= initializeBackupDataOrdersGlobal();
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
@@ -79,7 +123,7 @@ func backupProcess() {
 				
 			case message := <- backupDataOrdersRecipient.ReceiveChannel:
 				
-				backupDataOrders = handleBackupDataOrders(message, backupDataOrders);
+				backupDataOrders = handleBackupDataOrders(message, backupDataOrders, writeBackupDataOrders);
 
 			case message := <- backupDataOrdersGlobalRecipient.ReceiveChannel:
 

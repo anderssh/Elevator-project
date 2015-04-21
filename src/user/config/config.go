@@ -6,6 +6,7 @@ import(
 
 const(
 	DISTRIBUTOR_ALIVE_NOTIFICATION_DELAY 				time.Duration 	=	time.Millisecond * 40
+	DISTRIBUTOR_CONNECTION_CHECK_DELAY 					time.Duration 	=	time.Millisecond * 80
 				
 	REGISTER_ELEVATOR_EVENT_SLEEP						time.Duration 	= 	time.Millisecond * 10
 				
@@ -20,8 +21,10 @@ const(
 	PORT_SERVER_DEFAULT 								int 			= 	9125
 	PORT_SERVER_WITH_TIMEOUT							int 			= 	9126
 
-	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	true
+	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	false
 
 	BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE				time.Duration	=   time.Millisecond * 200
 	BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP  			time.Duration	=   time.Millisecond * 15
+
+	BACKUP_FILE_NAME									string			= 	"backup.txt"
 );

@@ -2,9 +2,12 @@ package main;
 
 import (
 	"user/processPairController"
+	"runtime"
 );
 
 func main() {
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	
 	processPairController.Run();
 

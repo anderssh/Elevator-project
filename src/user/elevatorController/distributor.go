@@ -40,7 +40,8 @@ func removeIpAddrFromWorkerIpAddrList(remoteAddr string) {
 
 	for worker := range workerIPAddrs {
 		if (workerIPAddrs[worker] == remoteAddr) {
-			workerIPAddrs = append(workerIPAddrs[:worker], workerIPAddrs[worker+1:]...)
+			workerIPAddrs = append(workerIPAddrs[:worker], workerIPAddrs[worker + 1:] ...);
+			return;
 		}
 	}
 }
@@ -114,7 +115,9 @@ func distributorInitialize(transmitChannelTCP chan network.Message) {
 
 	currentlyHandledOrder = Order{ -1, -1 };
 
-	transmitChannelTCP <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), localIPAddr);
+	ordersGlobalEncoded, _ := JSON.Encode(ordersGlobal.GetAll());
+
+	transmitChannelTCP <- network.MakeMessage("workerChangeDistributor", ordersGlobalEncoded, localIPAddr);
 }
 
 //-----------------------------------------------//
@@ -278,6 +281,7 @@ func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitCha
 		case STATE_STARTUP:
 
 		default:
+			
 			log.Data("Distributor: orders on floor executed by someone");
 
 			for worker := range workerIPAddrs {
@@ -289,13 +293,11 @@ func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitCha
 //-----------------------------------------------//
 // Merging
 
-func distributorHandleActiveNotificationTick(transmitChannelUDP chan network.Message) {
+func distributorHandleNotificationTick(transmitChannelUDP chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
-
-			message, _ := JSON.Encode("Alive");
-			transmitChannelUDP <- network.MakeMessage("distributorActiveNotification", message, network.BROADCAST_ADDR);
+			transmitChannelUDP <- network.MakeMessage("distributorActiveNotification", make([]byte, 0, 1), network.BROADCAST_ADDR);
 	}
 }
 
@@ -326,7 +328,7 @@ func distributorHandleActiveNotification(message network.Message, transmitChanne
 				mergeIPAddr = message.SenderIPAddr;
 
 				log.Data("Distributor: Merge with", mergeIPAddr);
-				transmitChannelTCP <- network.MakeMessage("distributorMergeRequest", make([]byte, 0, 1), mergeIPAddr);
+				transmitChannelTCP <- network.MakeMessage("distributorMergeRequest", make([]byte, 5, 5), mergeIPAddr);
 			}
 	}
 }
@@ -383,6 +385,24 @@ func distributorHandleMergeData(message network.Message, transmitChannelTCP chan
 
 //-----------------------------------------------//
 // Disconnect
+
+func distributorHandleConnectionCheck(transmitChannelTCP chan network.Message) { 				// Force disconnect event if someone has disconnected
+
+	switch currentState {
+
+		case STATE_STARTUP:
+
+		case STATE_INACTIVE:
+
+			transmitChannelTCP <- network.MakeMessage("check", make([]byte, 0, 1), distributorIPAddr);
+
+		default:
+
+			for worker := range workerIPAddrs {
+				transmitChannelTCP <- network.MakeMessage("check", make([]byte, 0, 1), workerIPAddrs[worker]);
+			}
+	}
+}
 
 func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannelTCP chan network.Message, eventRedistributeOrder chan bool) {
 

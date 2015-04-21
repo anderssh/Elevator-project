@@ -476,6 +476,10 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 	//-----------------------------------------------//
 
+	sendBackup(transmitChannelUDP);
+
+	//-----------------------------------------------//
+
 	err := elevator.Initialize();
 
 	if err != nil {
@@ -513,6 +517,7 @@ func Run(transmitChannelUDP 					chan network.Message,
 			case floorReached := <- eventReachedNewFloor:
 
 				handleReachedNewFloor(floorReached, workerExitsStartup, eventCloseDoor, backupDataOrders);
+				sendBackup(transmitChannelUDP);
 				Display();
 
 			case <- eventCloseDoor:

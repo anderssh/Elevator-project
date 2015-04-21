@@ -42,6 +42,8 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 	ordersGlobal.SetTo(backupDataOrdersGlobal.Orders);
 	ordersGlobal.ResetAllResponsibilities();
 
+	sendBackup(transmitChannelUDP);
+
 	//-----------------------------------------------//
 	// Elevator state machine setup
 
@@ -107,7 +109,8 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 
 	addBroadcastRecipientChannel <- distributorActiveNotificationRecipient;
 
-	eventDistributorActiveNotificationTicker := time.NewTicker(config.DISTRIBUTOR_ALIVE_NOTIFICATION_DELAY);
+	eventDistributorAliveNotificationTicker := time.NewTicker(config.DISTRIBUTOR_ALIVE_NOTIFICATION_DELAY);
+	eventDistributorConnectionCheckTicker 	:= time.NewTicker(config.DISTRIBUTOR_CONNECTION_CHECK_DELAY);
 
 	//-----------------------------------------------//
 	// Worker setup
@@ -142,6 +145,12 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 			case <- eventElevatorExitsStartup:
 
 				distributorHandleElevatorExitsStartup(eventRedistributeOrder);
+
+			//-----------------------------------------------//
+
+			case <- eventDistributorConnectionCheckTicker.C:
+
+				distributorHandleConnectionCheck(transmitChannelTCP);
 
 			case disconnectIPAddr := <- eventDisconnect:
 
@@ -179,9 +188,9 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 			//-----------------------------------------------//
 			// Distributor switching and merging
 
-			case <- eventDistributorActiveNotificationTicker.C:
+			case <- eventDistributorAliveNotificationTicker.C:
 
-				distributorHandleActiveNotificationTick(transmitChannelUDP);
+				distributorHandleNotificationTick(transmitChannelUDP);
 
 			case message := <- distributorActiveNotificationRecipient.ReceiveChannel:
 				

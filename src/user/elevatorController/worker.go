@@ -39,7 +39,7 @@ func workerHandleElevatorNewOrder(order Order, transmitChannelTCP chan network.M
 
 func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
 
-	log.Data("Worker: Did not receive confirmation on the order I sent up");
+	//log.Data("Worker: Did not receive confirmation on the order I sent up");
 
 	orderEncoded, _ := JSON.Encode(order);
 	ordersUnconfirmed.ResetTimer(order, eventUnconfirmedOrderTimeout);

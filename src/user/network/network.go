@@ -8,6 +8,7 @@ import(
 	"user/config"
 	"user/log"
 	"user/encoder/JSON"
+	"strings"
 );
 
 //-----------------------------------------------//
@@ -44,6 +45,21 @@ func Initialize(){
 
 	tcpConnections 		= make(map[string]*net.TCPConn);
 	tcpConnectionsMutex = &sync.Mutex{};
+}
+
+func deleteConnectionWithIPAddr(iPAddrToDelete string) {
+	
+	tcpConnectionsMutex.Lock();
+	
+	for remoteAddr, connection := range tcpConnections {
+
+		if strings.HasPrefix(remoteAddr, iPAddrToDelete + ":") {
+			connection.Close();
+			delete(tcpConnections, remoteAddr);
+		}
+	}
+	
+	tcpConnectionsMutex.Unlock();
 }
 
 //-----------------------------------------------//
@@ -252,12 +268,9 @@ func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr *net.TCPAdd
 	
 		if err != nil || messageLength < 0 {
 
-			log.Error("Network: Error when reading from TCP.");
+			log.Error("Network: Error when reading from TCP.", remoteAddr.String(), remoteIPAddr);
 
-			tcpConnectionsMutex.Lock();
-			listenConnection.Close();
-			delete(tcpConnections, remoteAddr.String());
-			tcpConnectionsMutex.Unlock();
+			deleteConnectionWithIPAddr(remoteIPAddr);
 
 			eventDisconnect <- remoteIPAddr;
 
@@ -313,6 +326,10 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 		select {
 			case message := <- messageChannel:
 				
+				if message.RecipientID == "distributorMergeRequest" {
+					log.Warning("YEAH...")
+				}
+
 				for recipientIndex := range recipients {
 					if message.RecipientID == recipients[recipientIndex].ID {
 						recipients[recipientIndex].ReceiveChannel <- message;
@@ -335,8 +352,7 @@ func tcpConnectTo(remoteAddr *net.TCPAddr, remoteIPAddr string, eventDisconnect 
 
 	if err != nil {
 		
-		log.Error("Network: Could not dial tcp", remoteIPAddr, remoteAddr);
-		log.Error(err)
+		log.Error("Network: Could not dial tcp", err, remoteIPAddr, remoteAddr);
 
 		eventDisconnect <- remoteIPAddr;
 		
@@ -358,7 +374,7 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 		select {
 			case message := <- transmitChannel:
 
-				remoteAddr, err 	:= net.ResolveTCPAddr("tcp", message.DestinationIPAddr + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
+				remoteAddr, err := net.ResolveTCPAddr("tcp", message.DestinationIPAddr + ":" + strconv.Itoa(config.PORT_SERVER_DEFAULT));
 
 				if err != nil {
 					log.Error(err);
@@ -372,17 +388,23 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 
 				tcpConnectionsMutex.Lock();
 
-				sendConnection, _ := tcpConnections[remoteAddr.String()];
-				encodedMessage, _ := JSON.Encode(message);
-				n, err 			  := sendConnection.Write(encodedMessage);
+				sendConnection, connectionExists := tcpConnections[remoteAddr.String()];
 
-				tcpConnectionsMutex.Unlock();
+				if !connectionExists {
 
-				if err != nil || n < 0 {
-					tcpConnectionsMutex.Lock();
-					sendConnection.Close();
-					delete(tcpConnections, remoteAddr.String());
 					tcpConnectionsMutex.Unlock();
+					log.Error("Failed to add connection to list", remoteAddr.String());
+
+				} else {
+
+					encodedMessage, _ 	:= JSON.Encode(message);
+					n, err 			  	:= sendConnection.Write(encodedMessage);
+
+					tcpConnectionsMutex.Unlock();
+
+					if err != nil || n < 0 {
+						deleteConnectionWithIPAddr(message.DestinationIPAddr);
+					}
 				}
 		}
 	}
