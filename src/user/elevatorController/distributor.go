@@ -129,6 +129,15 @@ func returnToStateIdle(eventRedistributeOrder chan bool) {
 }
 
 //-----------------------------------------------//
+
+func distributorHandleElevatorExitsStartup(eventRedistributeOrder chan bool) {
+
+	log.Data("Distributor: Exits startup");
+	
+	returnToStateIdle(eventRedistributeOrder);
+}
+
+//-----------------------------------------------//
 // Order handling
 
 func distributorHandleRedistributionOfOrder(transmitChannelTCP chan network.Message) {

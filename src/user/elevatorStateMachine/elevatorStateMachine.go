@@ -183,7 +183,7 @@ func handleEventReachedNewFloor(floorReached int) {
 	switch currentState {
 		case STATE_STARTUP:
 
-			elevator.Stop()
+			elevator.Stop();
 			elevator.SetLastReachedFloor(floorReached);
 
 			workerExitsStartup <- true;

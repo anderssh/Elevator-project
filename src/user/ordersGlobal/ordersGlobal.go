@@ -3,6 +3,7 @@ package ordersGlobal;
 import(
 	. "user/typeDefinitions"
 	"user/log"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -89,7 +90,7 @@ func GetAll() []OrderGlobal {
 	return orders;
 }
 
-func SetNewList(newOrders []OrderGlobal) {
+func SetNew(newOrders []OrderGlobal) {
 	orders = newOrders;
 }
 
@@ -115,6 +116,12 @@ func GetOrderToRedistribute() OrderGlobal {
 	}
 
 	return OrderGlobal{}; // Fix this
+}
+
+//-----------------------------------------------//
+
+func MakeBackup() OrdersGlobalBackup {
+	return OrdersGlobalBackup{ Orders : orders, Timestamp : time.Now().UnixNano() };
 }
 
 //-----------------------------------------------//

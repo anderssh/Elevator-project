@@ -41,6 +41,11 @@ type OrderGlobal struct {
 	Floor 					int
 }
 
+type OrdersGlobalBackup struct {
+	Orders 		[]OrderGlobal
+	Timestamp 	int64
+}
+
 //-----------------------------------------------//
 
 type ButtonType int

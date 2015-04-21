@@ -33,10 +33,10 @@ var tcpConnectionsMutex 	*sync.Mutex;
 func Initialize(){
 
     discoverAddr, _ := net.ResolveUDPAddr("udp", BROADCAST_ADDR + ":50000");
-    discoverConn, _ := net.DialUDP("udp4", nil, discoverAddr);
+    discoverConn, _ := net.DialUDP("udp", nil, discoverAddr);
 	
 	discoverConnAddr := discoverConn.LocalAddr();
-	localAddr, _ := net.ResolveUDPAddr("udp4", discoverConnAddr.String());
+	localAddr, _ := net.ResolveUDPAddr("udp", discoverConnAddr.String());
 	
 	iPAddr = localAddr.IP.String();
 	
@@ -315,7 +315,6 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 				
 				for recipientIndex := range recipients {
 					if message.RecipientID == recipients[recipientIndex].ID {
-						log.Data("                       got", message.RecipientID)
 						recipients[recipientIndex].ReceiveChannel <- message;
 						break;
 					}
@@ -364,7 +363,7 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 				if err != nil {
 					log.Error(err);
 				}
-				log.Data("sent", message.RecipientID)
+				
 				_, connectionExists := tcpConnections[remoteAddr.String()];
 
 				if !connectionExists {

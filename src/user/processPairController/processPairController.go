@@ -1,7 +1,8 @@
 package processPairController;
 
 import(
-	"os"
+	"os/exec"
+	. "user/typeDefinitions"
 	"user/config"
 	"user/elevatorController"
 	"user/log"
@@ -15,6 +16,8 @@ import(
 func backupProcess() {
 
 	log.Data("Backup process: starting...");
+
+	backupData := OrdersGlobalBackup{ Orders : make([]OrderGlobal, 0, 1) };
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
@@ -31,14 +34,26 @@ func backupProcess() {
 	loop:
 	for {
 		select {
-			case message := <- aliveRecipient.ReceiveChannel:
-				log.Data("backupProcessAlive", message);
+			case 			<- aliveRecipient.ReceiveChannel:
+				// Alive
 			case message := <- dataRecipient.ReceiveChannel:
-				log.Data("dataRecipient", message);
-			case 			     <- timeoutNotifier:
-				log.Warning("Switching to master process");
+				
+				var backupDataReceived OrdersGlobalBackup;
+				err := JSON.Decode(message.Data, &backupDataReceived);
 
-				go masterProcess();
+				if err != nil {
+					log.Error(err);
+				}
+
+				if backupDataReceived.Timestamp >= backupData.Timestamp {
+					log.Data("Backup process: new backup data received.");
+					backupData = backupDataReceived;
+				}
+
+			case 			     <- timeoutNotifier:
+				log.Warning("Backup process: switching to master process");
+
+				go masterProcess(backupData);
 				break loop;
 		}
 	}
@@ -56,9 +71,14 @@ func masterProcessAliveNotification(transmitChannelUDP chan network.Message) {
 	}
 }
 
-func masterProcess() {
+func masterProcess(backupData OrdersGlobalBackup) {
 
 	log.Data("Master process: starting...");
+
+	cmd := exec.Command("gnome-terminal", "-e", "./main");
+	cmd.Output();
+
+	log.Data("Master process: Spawned backup");
 
 	transmitChannelUDP := make(chan network.Message);
 
@@ -67,7 +87,7 @@ func masterProcess() {
 	go masterProcessAliveNotification(transmitChannelUDP);
 
 	elevatorController.Initialize();
-	go elevatorController.Run();
+	go elevatorController.Run(transmitChannelUDP, backupData);
 }
 
 //-----------------------------------------------//
@@ -76,13 +96,5 @@ func Run() {
 
 	network.Initialize();
 
-	if len(os.Args) >= 2 && os.Args[1] == "backup" {
-
-		go backupProcess();
-
-	} else {
-
-		go masterProcess();
-
-	}
+	go backupProcess();
 }

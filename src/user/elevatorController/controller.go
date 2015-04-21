@@ -6,7 +6,8 @@ import(
 	"user/network"
 	"time"
 	"user/config"
-	"user/log"
+	"user/encoder/JSON"
+	"user/ordersGlobal"
 );
 
 //-----------------------------------------------//
@@ -23,6 +24,12 @@ var eventElevatorCostResponse chan int;
 var eventElevatorOrdersExecutedOnFloor chan int;
 
 //-----------------------------------------------//
+
+func sendBackup(transmitChannelUDP chan network.Message) {
+
+	backupEncoded, _ := JSON.Encode(ordersGlobal.MakeBackup());
+	transmitChannelUDP <- network.MakeTimeoutMessage("backupProcessData", backupEncoded, network.LOCALHOST);
+}
 
 func Initialize() {
 	
@@ -49,9 +56,12 @@ func Initialize() {
 									eventElevatorOrdersExecutedOnFloor);
 }
 
-func Run() {
+func Run(transmitChannelUDP chan network.Message, backupData OrdersGlobalBackup) {
 
 	elevatorStateMachine.Run();
+
+	ordersGlobal.SetNew(backupData.Orders);
+	ordersGlobal.ResetAllResponsibilities();
 
 	//-----------------------------------------------//
 	// Network setup
@@ -60,7 +70,6 @@ func Run() {
 	addBroadcastRecipientChannel 	:= make(chan network.Recipient);
 	
 	transmitChannelTCP 				:= make(chan network.Message);
-	transmitChannelUDP 				:= make(chan network.Message);
 
 	eventDisconnect 				:= make(chan string);
 
@@ -68,12 +77,11 @@ func Run() {
 	go network.TCPTransmitServer(transmitChannelTCP, eventDisconnect);
 
 	go network.UDPListenServer("", addBroadcastRecipientChannel);
-	go network.UDPTransmitServer(transmitChannelUDP);
 
 	//-----------------------------------------------//
 	// Distributor setup
 
-	currentState = STATE_IDLE;
+	currentState = STATE_STARTUP;
 
 	workerIPAddrs = make([]string, 0, 1);
 	workerIPAddrs = append(workerIPAddrs, network.GetLocalIPAddr());
@@ -140,12 +148,12 @@ func Run() {
 
 			case <- eventElevatorExitsStartup:
 
-				log.Data("Distributor: Exits startup");
-				currentState = STATE_IDLE;
+				distributorHandleElevatorExitsStartup(eventRedistributeOrder);
 
 			case disconnectIPAddr := <- eventDisconnect:
 
 				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannelTCP, eventRedistributeOrder);
+				sendBackup(transmitChannelUDP);
 
 			//-----------------------------------------------//
 			// Distribute order
@@ -193,6 +201,7 @@ func Run() {
 			case message := <- distributorMergeDataRecipient.ReceiveChannel:
 
 				distributorHandleMergeData(message, transmitChannelTCP, eventRedistributeOrder);
+				sendBackup(transmitChannelUDP);
 
 			//-----------------------------------------------//
 			//-----------------------------------------------//
@@ -222,26 +231,31 @@ func Run() {
 			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
 				
 				workerHandleNewDestinationOrder(transmitChannelTCP, message, elevatorNewDestinationOrder);
+				sendBackup(transmitChannelUDP);
 			
 			case message := <- workerDestinationOrderTakenBySomeoneRecipient.ReceiveChannel:
 
 				workerHandleDestinationOrderTakenBySomeone(message, elevatorDestinationOrderTakenBySomeone);
+				sendBackup(transmitChannelUDP);
 
 			//-----------------------------------------------//
 
 			case floor := <- eventElevatorOrdersExecutedOnFloor:
 
 				workerHandleElevatorOrdersExecutedOnFloor(floor, transmitChannelTCP);
+				sendBackup(transmitChannelUDP);
 
 			case message := <- workerOrdersExecutedOnFloorBySomeoneRecipient.ReceiveChannel:
 
 				workerHandleOrdersExecutedOnFloorBySomeone(message, elevatorOrdersExecutedOnFloorBySomeone);
+				sendBackup(transmitChannelUDP);
 
 			//-----------------------------------------------//
 
 			case message := <- workerChangeDistributorRecipient.ReceiveChannel:
 				
 				workerHandleDistributorChange(message, elevatorRemoveCallUpAndCallDownOrders);
+				sendBackup(transmitChannelUDP);
 		}
 	}
 

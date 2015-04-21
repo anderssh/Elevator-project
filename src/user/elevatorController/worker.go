@@ -175,7 +175,7 @@ func workerHandleDistributorChange(message network.Message, elevatorRemoveCallUp
 		log.Error(err);
 	}
 
-	ordersGlobal.SetNewList(newOrdersGlobal);
+	ordersGlobal.SetNew(newOrdersGlobal);
 
 	elevatorRemoveCallUpAndCallDownOrders <- true;
 }
