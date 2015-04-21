@@ -13,47 +13,83 @@ import(
 
 //-----------------------------------------------//
 
+func handleBackupDataOrders(message network.Message, backupDataOrders OrdersBackup) OrdersBackup {
+
+	var dataReceived OrdersBackup;
+	err := JSON.Decode(message.Data, &dataReceived);
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	if dataReceived.Timestamp >= backupDataOrders.Timestamp {
+		log.Data("Backup process: new backup data destination orders received.");
+		return dataReceived;
+	} else {
+		return backupDataOrders;
+	}
+}
+
+func handleBackupDataOrdersGlobal(message network.Message, backupDataOrdersGlobal OrdersGlobalBackup) OrdersGlobalBackup {
+	
+	var dataReceived OrdersGlobalBackup;
+	err := JSON.Decode(message.Data, &dataReceived);
+
+	if err != nil {
+		log.Error(err);
+	}
+
+	if dataReceived.Timestamp >= backupDataOrdersGlobal.Timestamp {
+		log.Data("Backup process: new backup data orders global received.");
+		return dataReceived;
+	} else {
+		return backupDataOrdersGlobal;
+	}
+}
+
+//-----------------------------------------------//
+
 func backupProcess() {
 
 	log.Data("Backup process: starting...");
 
-	backupData := OrdersGlobalBackup{ Orders : make([]OrderGlobal, 0, 1) };
+	backupDataOrders 		:= OrdersBackup{ Orders : make([]Order, 0, 1) };
+	backupDataOrdersGlobal 	:= OrdersGlobalBackup{ Orders : make([]OrderGlobal, 0, 1) };
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
-	aliveRecipient := network.Recipient{ ID : "backupProcessAlive", ReceiveChannel : make(chan network.Message) };
-	dataRecipient  := network.Recipient{ ID : "backupProcessData", ReceiveChannel : make(chan network.Message) };
- 
 	timeoutNotifier 	:= make(chan bool);
 
 	go network.UDPListenServerWithTimeout(network.LOCALHOST, addServerRecipientChannel, config.BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE, timeoutNotifier);
 
+	aliveRecipient 					 := network.Recipient{ ID : "backupProcessAlive", ReceiveChannel : make(chan network.Message) };
+	backupDataOrdersRecipient  		 := network.Recipient{ ID : "backupProcessDataOrders", ReceiveChannel : make(chan network.Message) };
+	backupDataOrdersGlobalRecipient  := network.Recipient{ ID : "backupProcessDataOrdersGlobal", ReceiveChannel : make(chan network.Message) };
+
 	addServerRecipientChannel <- aliveRecipient;
-	addServerRecipientChannel <- dataRecipient;
+	addServerRecipientChannel <- backupDataOrdersRecipient;
+	addServerRecipientChannel <- backupDataOrdersGlobalRecipient;
 
 	loop:
 	for {
 		select {
-			case 			<- aliveRecipient.ReceiveChannel:
+			case <- aliveRecipient.ReceiveChannel:
+
 				// Alive
-			case message := <- dataRecipient.ReceiveChannel:
 				
-				var backupDataReceived OrdersGlobalBackup;
-				err := JSON.Decode(message.Data, &backupDataReceived);
+			case message := <- backupDataOrdersRecipient.ReceiveChannel:
+				
+				backupDataOrders = handleBackupDataOrders(message, backupDataOrders);
 
-				if err != nil {
-					log.Error(err);
-				}
+			case message := <- backupDataOrdersGlobalRecipient.ReceiveChannel:
 
-				if backupDataReceived.Timestamp >= backupData.Timestamp {
-					log.Data("Backup process: new backup data received.");
-					backupData = backupDataReceived;
-				}
+				backupDataOrdersGlobal = handleBackupDataOrdersGlobal(message, backupDataOrdersGlobal);
 
-			case 			     <- timeoutNotifier:
+			case <- timeoutNotifier:
+
 				log.Warning("Backup process: switching to master process");
 
-				go masterProcess(backupData);
+				go masterProcess(backupDataOrders, backupDataOrdersGlobal);
 				break loop;
 		}
 	}
@@ -71,14 +107,17 @@ func masterProcessAliveNotification(transmitChannelUDP chan network.Message) {
 	}
 }
 
-func masterProcess(backupData OrdersGlobalBackup) {
+func masterProcess(backupDataOrders OrdersBackup, backupDataOrdersGlobal OrdersGlobalBackup) {
 
 	log.Data("Master process: starting...");
 
-	cmd := exec.Command("gnome-terminal", "-e", "./main");
-	cmd.Output();
+	if config.SHOULD_USE_PROCESS_PAIRS {
 
-	log.Data("Master process: Spawned backup");
+		cmd := exec.Command("gnome-terminal", "-e", "./main");
+		cmd.Output();
+
+		log.Data("Master process: Spawned backup");
+	}
 
 	transmitChannelUDP := make(chan network.Message);
 
@@ -86,8 +125,7 @@ func masterProcess(backupData OrdersGlobalBackup) {
 
 	go masterProcessAliveNotification(transmitChannelUDP);
 
-	elevatorController.Initialize();
-	go elevatorController.Run(transmitChannelUDP, backupData);
+	go elevatorController.Run(transmitChannelUDP, backupDataOrders, backupDataOrdersGlobal);
 }
 
 //-----------------------------------------------//

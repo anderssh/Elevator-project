@@ -4,6 +4,7 @@ import(
 	. "user/typeDefinitions"
 	"user/config"
 	"math"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -15,6 +16,21 @@ const(
 //-----------------------------------------------//
 
 var orders []Order = make([]Order, 0, 1);
+
+//-----------------------------------------------//
+
+func MakeBackup() OrdersBackup {
+
+	ordersToBackup := make([]Order, 0, 1); 				// Only backup inside order, other are distributed via ordersGlobal
+
+	for orderIndex := range orders {
+		if orders[orderIndex].Type == ORDER_INSIDE {
+			ordersToBackup = append(ordersToBackup, orders[orderIndex]);
+		}
+	}
+
+	return OrdersBackup{ Orders : ordersToBackup, Timestamp : time.Now().UnixNano() };
+}
 
 //-----------------------------------------------//
 

@@ -29,6 +29,11 @@ type Order struct {
 	Floor	int
 }
 
+type OrdersBackup struct {
+	Orders 		[]Order
+	Timestamp 	int64
+}
+
 type OrderUnconfirmed struct {
 	Timer	*time.Timer
 	Type 	OrderType

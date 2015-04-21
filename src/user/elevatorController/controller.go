@@ -12,56 +12,15 @@ import(
 
 //-----------------------------------------------//
 
-var elevatorNewDestinationOrder chan Order;
-var elevatorCostRequest chan Order;
-var elevatorOrdersExecutedOnFloorBySomeone chan int;
-var elevatorDestinationOrderTakenBySomeone chan Order;
-var elevatorRemoveCallUpAndCallDownOrders chan bool;
-
-var eventElevatorExitsStartup chan bool;
-var eventElevatorNewOrder chan Order;
-var eventElevatorCostResponse chan int;
-var eventElevatorOrdersExecutedOnFloor chan int;
-
-//-----------------------------------------------//
-
 func sendBackup(transmitChannelUDP chan network.Message) {
 
 	backupEncoded, _ := JSON.Encode(ordersGlobal.MakeBackup());
-	transmitChannelUDP <- network.MakeTimeoutMessage("backupProcessData", backupEncoded, network.LOCALHOST);
+	transmitChannelUDP <- network.MakeTimeoutMessage("backupProcessDataOrdersGlobal", backupEncoded, network.LOCALHOST);
 }
 
-func Initialize() {
-	
-	elevatorNewDestinationOrder 	= make(chan Order);
-	elevatorCostRequest 			= make(chan Order, 10);
-	elevatorOrdersExecutedOnFloorBySomeone = make(chan int);
-	elevatorDestinationOrderTakenBySomeone = make(chan Order);
-	elevatorRemoveCallUpAndCallDownOrders = make(chan bool);
+//-----------------------------------------------//
 
-	eventElevatorExitsStartup 		= make(chan bool);
-	eventElevatorNewOrder 			= make(chan Order);
-	eventElevatorCostResponse 		= make(chan int, 10);
-	eventElevatorOrdersExecutedOnFloor = make(chan int);
-
-	elevatorStateMachine.Initialize(elevatorNewDestinationOrder,
-									elevatorCostRequest,
-									elevatorOrdersExecutedOnFloorBySomeone,
-									elevatorDestinationOrderTakenBySomeone,
-									elevatorRemoveCallUpAndCallDownOrders,
-
-									eventElevatorExitsStartup,
-									eventElevatorNewOrder,
-									eventElevatorCostResponse,
-									eventElevatorOrdersExecutedOnFloor);
-}
-
-func Run(transmitChannelUDP chan network.Message, backupData OrdersGlobalBackup) {
-
-	elevatorStateMachine.Run();
-
-	ordersGlobal.SetNew(backupData.Orders);
-	ordersGlobal.ResetAllResponsibilities();
+func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup, backupDataOrdersGlobal OrdersGlobalBackup) {
 
 	//-----------------------------------------------//
 	// Network setup
@@ -77,6 +36,40 @@ func Run(transmitChannelUDP chan network.Message, backupData OrdersGlobalBackup)
 	go network.TCPTransmitServer(transmitChannelTCP, eventDisconnect);
 
 	go network.UDPListenServer("", addBroadcastRecipientChannel);
+
+	//-----------------------------------------------//
+
+	ordersGlobal.SetTo(backupDataOrdersGlobal.Orders);
+	ordersGlobal.ResetAllResponsibilities();
+
+	//-----------------------------------------------//
+	// Elevator state machine setup
+
+	elevatorNewDestinationOrder 			:= make(chan Order);
+	elevatorCostRequest 					:= make(chan Order, 10);
+	elevatorOrdersExecutedOnFloorBySomeone 	:= make(chan int);
+	elevatorDestinationOrderTakenBySomeone 	:= make(chan Order);
+	elevatorRemoveCallUpAndCallDownOrders 	:= make(chan bool);
+
+	eventElevatorExitsStartup 				:= make(chan bool);
+	eventElevatorNewOrder 					:= make(chan Order);
+	eventElevatorCostResponse 				:= make(chan int, 10);
+	eventElevatorOrdersExecutedOnFloor 		:= make(chan int);
+
+	go elevatorStateMachine.Run(transmitChannelUDP,
+
+								backupDataOrders.Orders,
+
+								elevatorNewDestinationOrder,
+						  	 	elevatorCostRequest,
+						  	 	elevatorOrdersExecutedOnFloorBySomeone,
+						  	 	elevatorDestinationOrderTakenBySomeone,
+						  	 	elevatorRemoveCallUpAndCallDownOrders,
+
+						  	 	eventElevatorExitsStartup,
+						  	 	eventElevatorNewOrder,
+						  	 	eventElevatorCostResponse,
+						  	 	eventElevatorOrdersExecutedOnFloor);
 
 	//-----------------------------------------------//
 	// Distributor setup

@@ -12,8 +12,22 @@ var orders []OrderGlobal = make([]OrderGlobal, 0, 1);
 
 //-----------------------------------------------//
 
+func GetAll() []OrderGlobal {
+	return orders;
+}
+
+func SetTo(newOrders []OrderGlobal) {
+	orders = newOrders;
+}
+
+//-----------------------------------------------//
+
 func MakeFromOrder(order Order, responsibleWorkerIPAddr string) OrderGlobal {
 	return OrderGlobal{ ResponsibleWorkerIPAddr : responsibleWorkerIPAddr, Type : order.Type, Floor : order.Floor };
+}
+
+func MakeBackup() OrdersGlobalBackup {
+	return OrdersGlobalBackup{ Orders : orders, Timestamp : time.Now().UnixNano() };
 }
 
 //-----------------------------------------------//
@@ -86,16 +100,6 @@ func RemoveOnFloor(floor int) {
 
 //-----------------------------------------------//
 
-func GetAll() []OrderGlobal {
-	return orders;
-}
-
-func SetNew(newOrders []OrderGlobal) {
-	orders = newOrders;
-}
-
-//-----------------------------------------------//
-
 func HasOrderToRedistribute() bool {
 
 	for orderIndex := range orders {
@@ -116,12 +120,6 @@ func GetOrderToRedistribute() OrderGlobal {
 	}
 
 	return OrderGlobal{}; // Fix this
-}
-
-//-----------------------------------------------//
-
-func MakeBackup() OrdersGlobalBackup {
-	return OrdersGlobalBackup{ Orders : orders, Timestamp : time.Now().UnixNano() };
 }
 
 //-----------------------------------------------//
