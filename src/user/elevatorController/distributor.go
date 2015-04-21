@@ -103,7 +103,7 @@ func costBidAddAndSort(newCostBid CostBid) {
 
 //-----------------------------------------------//
 
-func distributorInitialize(transmitChannel chan network.Message) {
+func distributorInitialize(transmitChannelTCP chan network.Message) {
 
 	localIPAddr := network.GetLocalIPAddr();
 
@@ -114,7 +114,7 @@ func distributorInitialize(transmitChannel chan network.Message) {
 
 	currentlyHandledOrder = Order{ -1, -1 };
 
-	transmitChannel <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), localIPAddr);
+	transmitChannelTCP <- network.MakeMessage("workerChangeDistributor", make([]byte, 0, 1), localIPAddr);
 }
 
 //-----------------------------------------------//
@@ -131,7 +131,7 @@ func returnToStateIdle(eventRedistributeOrder chan bool) {
 //-----------------------------------------------//
 // Order handling
 
-func distributorHandleRedistributionOfOrder(transmitChannel chan network.Message) {
+func distributorHandleRedistributionOfOrder(transmitChannelTCP chan network.Message) {
 		
 	switch currentState {
 		case STATE_IDLE:
@@ -148,7 +148,7 @@ func distributorHandleRedistributionOfOrder(transmitChannel chan network.Message
 				currentState = STATE_AWAITING_COST_RESPONSE;
 
 				for worker := range workerIPAddrs {
-					transmitChannel <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
+					transmitChannelTCP <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
 				}
 			}
 
@@ -159,7 +159,7 @@ func distributorHandleRedistributionOfOrder(transmitChannel chan network.Message
 	}
 }
 
-func distributorHandleNewOrder(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleNewOrder(message network.Message, transmitChannelTCP chan network.Message) {
 	
 	switch currentState {
 		case STATE_IDLE:
@@ -177,7 +177,7 @@ func distributorHandleNewOrder(message network.Message, transmitChannel chan net
 			currentState = STATE_AWAITING_COST_RESPONSE;
 
 			for worker := range workerIPAddrs {
-				transmitChannel <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
+				transmitChannelTCP <- network.MakeMessage("workerCostRequest", orderEncoded, workerIPAddrs[worker]);
 			}
 
 		case STATE_AWAITING_COST_RESPONSE:
@@ -187,7 +187,7 @@ func distributorHandleNewOrder(message network.Message, transmitChannel chan net
 	}
 }
 
-func distributorHandleCostResponse(message network.Message, transmitChannel chan network.Message){
+func distributorHandleCostResponse(message network.Message, transmitChannelTCP chan network.Message){
 
 	switch currentState {
 		case STATE_IDLE:
@@ -214,7 +214,7 @@ func distributorHandleCostResponse(message network.Message, transmitChannel chan
 				log.Data("Distributor: send destination", currentlyHandledOrder.Floor, "to", costBids[0].SenderIPAddr);
 				
 				order, _ := JSON.Encode(currentlyHandledOrder);
-				transmitChannel <- network.MakeMessage("workerNewDestinationOrder", order, costBids[0].SenderIPAddr);
+				transmitChannelTCP <- network.MakeMessage("workerNewDestinationOrder", order, costBids[0].SenderIPAddr);
 
 				currentState = STATE_AWAITING_ORDER_TAKEN_CONFIRMATION;
 			}
@@ -226,7 +226,7 @@ func distributorHandleCostResponse(message network.Message, transmitChannel chan
 
 //-----------------------------------------------//
 
-func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
+func distributorHandleOrderTakenConfirmation(message network.Message, transmitChannelTCP chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -235,7 +235,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 		case STATE_AWAITING_ORDER_TAKEN_CONFIRMATION:
 
-			log.Data("Distributor: Got order taken Confirmation")
+			log.Data("Distributor: Got order taken Confirmation");
 
 			var order Order;
 			err := JSON.Decode(message.Data, &order);
@@ -249,7 +249,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 			orderGlobalEncoded, _ := JSON.Encode(orderGlobal);
 
 			for costBidIndex := 1; costBidIndex < len(costBids); costBidIndex++ {
-				transmitChannel <- network.MakeMessage("workerDestinationOrderTakenBySomeone", orderGlobalEncoded, costBids[costBidIndex].SenderIPAddr);
+				transmitChannelTCP <- network.MakeMessage("workerDestinationOrderTakenBySomeone", orderGlobalEncoded, costBids[costBidIndex].SenderIPAddr);
 			}
 
 			// Clean up
@@ -262,7 +262,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 //-----------------------------------------------//
 
-func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitChannelTCP chan network.Message) {
 
 	switch currentState {
 
@@ -272,7 +272,7 @@ func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitCha
 			log.Data("Distributor: orders on floor executed by someone");
 
 			for worker := range workerIPAddrs {
-				transmitChannel <- network.MakeMessage("workerOrdersExecutedOnFloorBySomeone", message.Data, workerIPAddrs[worker]);
+				transmitChannelTCP <- network.MakeMessage("workerOrdersExecutedOnFloorBySomeone", message.Data, workerIPAddrs[worker]);
 			}
 	}
 }
@@ -280,13 +280,13 @@ func distributorHandleOrdersExecutedOnFloor(message network.Message, transmitCha
 //-----------------------------------------------//
 // Merging
 
-func distributorHandleActiveNotificationTick(broadcastChannel chan network.Message) {
+func distributorHandleActiveNotificationTick(transmitChannelUDP chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
 
 			message, _ := JSON.Encode("Alive");
-			broadcastChannel <- network.MakeMessage("distributorActiveNotification", message, network.BROADCAST_ADDR);
+			transmitChannelUDP <- network.MakeMessage("distributorActiveNotification", message, network.BROADCAST_ADDR);
 	}
 }
 
@@ -299,7 +299,7 @@ type MergeData struct {
 
 var mergeIPAddr string;
 
-func distributorHandleActiveNotification(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleActiveNotification(message network.Message, transmitChannelTCP chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -317,12 +317,12 @@ func distributorHandleActiveNotification(message network.Message, transmitChanne
 				mergeIPAddr = message.SenderIPAddr;
 
 				log.Data("Distributor: Merge with", mergeIPAddr);
-				transmitChannel <- network.MakeMessage("distributorMergeRequest", make([]byte, 0, 1), mergeIPAddr);
+				transmitChannelTCP <- network.MakeMessage("distributorMergeRequest", make([]byte, 0, 1), mergeIPAddr);
 			}
 	}
 }
 
-func distributorHandleMergeRequest(message network.Message, transmitChannel chan network.Message) {
+func distributorHandleMergeRequest(message network.Message, transmitChannelTCP chan network.Message) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -332,13 +332,13 @@ func distributorHandleMergeRequest(message network.Message, transmitChannel chan
 			mergeData := MergeData{ WorkerIPAddrs : workerIPAddrs, Orders : ordersGlobal.GetAll() };
 			mergeDataEncoded, _ := JSON.Encode(mergeData);
 
-			transmitChannel <- network.MakeMessage("distributorMergeData", mergeDataEncoded, message.SenderIPAddr);
+			transmitChannelTCP <- network.MakeMessage("distributorMergeData", mergeDataEncoded, message.SenderIPAddr);
 
 			currentState = STATE_INACTIVE;
 	}
 }
 
-func distributorHandleMergeData(message network.Message, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
+func distributorHandleMergeData(message network.Message, transmitChannelTCP chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 
@@ -363,7 +363,7 @@ func distributorHandleMergeData(message network.Message, transmitChannel chan ne
 
 			for worker := range mergeData.WorkerIPAddrs {
 				log.Data("Distributor: has new worker", mergeData.WorkerIPAddrs[worker]);
-				transmitChannel <- network.MakeMessage("workerChangeDistributor", ordersGlobalEncoded, mergeData.WorkerIPAddrs[worker]);
+				transmitChannelTCP <- network.MakeMessage("workerChangeDistributor", ordersGlobalEncoded, mergeData.WorkerIPAddrs[worker]);
 			}
 
 			mergeIPAddr = "";
@@ -375,7 +375,7 @@ func distributorHandleMergeData(message network.Message, transmitChannel chan ne
 //-----------------------------------------------//
 // Disconnect
 
-func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannel chan network.Message, eventRedistributeOrder chan bool) {
+func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChannelTCP chan network.Message, eventRedistributeOrder chan bool) {
 
 	switch currentState {
 		case STATE_IDLE:
@@ -429,7 +429,7 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChan
 
 				log.Data("Distributor: disconnected in INACTIVE. I am now a distributor.");
 
-				distributorInitialize(transmitChannel);
+				distributorInitialize(transmitChannelTCP);
 
 				ordersGlobal.ResetAllResponsibilities();
 

@@ -59,16 +59,16 @@ func Run() {
 	addServerRecipientChannel 		:= make(chan network.Recipient);
 	addBroadcastRecipientChannel 	:= make(chan network.Recipient);
 	
-	transmitChannel 				:= make(chan network.Message);
-	broadcastChannel 				:= make(chan network.Message);
+	transmitChannelTCP 				:= make(chan network.Message);
+	transmitChannelUDP 				:= make(chan network.Message);
 
 	eventDisconnect 				:= make(chan string);
 
 	go network.TCPListenServer("", addServerRecipientChannel, eventDisconnect);
-	go network.TCPTransmitServer(transmitChannel, eventDisconnect);
+	go network.TCPTransmitServer(transmitChannelTCP, eventDisconnect);
 
 	go network.UDPListenServer("", addBroadcastRecipientChannel);
-	go network.UDPTransmitServer(broadcastChannel);
+	go network.UDPTransmitServer(transmitChannelUDP);
 
 	//-----------------------------------------------//
 	// Distributor setup
@@ -106,7 +106,7 @@ func Run() {
 
 	addBroadcastRecipientChannel <- distributorActiveNotificationRecipient;
 
-	eventDistributorActiveNotificationTicker := time.NewTicker(config.MASTER_ALIVE_NOTIFICATION_DELAY);
+	eventDistributorActiveNotificationTicker := time.NewTicker(config.DISTRIBUTOR_ALIVE_NOTIFICATION_DELAY);
 
 	//-----------------------------------------------//
 	// Worker setup
@@ -145,7 +145,7 @@ func Run() {
 
 			case disconnectIPAddr := <- eventDisconnect:
 
-				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannel, eventRedistributeOrder);
+				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannelTCP, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 			// Distribute order
@@ -153,46 +153,46 @@ func Run() {
 			case message := <- distributorNewOrderRecipient.ReceiveChannel:
 
 				distributorDisplayWorkers();
-				distributorHandleNewOrder(message, transmitChannel);
+				distributorHandleNewOrder(message, transmitChannelTCP);
 
 			case <- eventRedistributeOrder:
 
-				distributorHandleRedistributionOfOrder(transmitChannel);
+				distributorHandleRedistributionOfOrder(transmitChannelTCP);
 			
 			case message := <- distributorCostResponseRecipient.ReceiveChannel:
 
 				distributorDisplayWorkers();
-				distributorHandleCostResponse(message, transmitChannel);
+				distributorHandleCostResponse(message, transmitChannelTCP);
 
 			case message := <- distributorOrderTakenConfirmationRecipient.ReceiveChannel:
 
 				distributorDisplayWorkers();
-				distributorHandleOrderTakenConfirmation(message, transmitChannel, eventRedistributeOrder);
+				distributorHandleOrderTakenConfirmation(message, transmitChannelTCP, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 
 			case message := <- distributorOrdersExecutedOnFloorRecipient.ReceiveChannel:
 
-				distributorHandleOrdersExecutedOnFloor(message, transmitChannel);
+				distributorHandleOrdersExecutedOnFloor(message, transmitChannelTCP);
 
 			//-----------------------------------------------//
 			// Distributor switching and merging
 
 			case <- eventDistributorActiveNotificationTicker.C:
 
-				distributorHandleActiveNotificationTick(broadcastChannel);
+				distributorHandleActiveNotificationTick(transmitChannelUDP);
 
 			case message := <- distributorActiveNotificationRecipient.ReceiveChannel:
 				
-				distributorHandleActiveNotification(message, transmitChannel);
+				distributorHandleActiveNotification(message, transmitChannelTCP);
 
 			case message := <- distributorMergeRequestRecipient.ReceiveChannel:
 
-				distributorHandleMergeRequest(message, transmitChannel);
+				distributorHandleMergeRequest(message, transmitChannelTCP);
 
 			case message := <- distributorMergeDataRecipient.ReceiveChannel:
 
-				distributorHandleMergeData(message, transmitChannel, eventRedistributeOrder);
+				distributorHandleMergeData(message, transmitChannelTCP, eventRedistributeOrder);
 
 			//-----------------------------------------------//
 			//-----------------------------------------------//
@@ -205,11 +205,11 @@ func Run() {
 
 			case order := <- eventElevatorNewOrder:
 				
-				workerHandleElevatorNewOrder(order, transmitChannel, elevatorNewDestinationOrder, eventUnconfirmedOrderTimeout);
+				workerHandleElevatorNewOrder(order, transmitChannelTCP, elevatorNewDestinationOrder, eventUnconfirmedOrderTimeout);
 
 			case order := <- eventUnconfirmedOrderTimeout:
 
-				workerHandleEventUnconfirmedOrderTimeout(order, transmitChannel, elevatorNewDestinationOrder, eventUnconfirmedOrderTimeout);
+				workerHandleEventUnconfirmedOrderTimeout(order, transmitChannelTCP, elevatorNewDestinationOrder, eventUnconfirmedOrderTimeout);
 			
 			case message := <- workerCostRequestRecipient.ReceiveChannel:
 				
@@ -217,11 +217,11 @@ func Run() {
 
 			case cost := <- eventElevatorCostResponse:
 
-				workerHandleElevatorCostResponse(cost, transmitChannel);
+				workerHandleElevatorCostResponse(cost, transmitChannelTCP);
 
 			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
 				
-				workerHandleNewDestinationOrder(transmitChannel, message, elevatorNewDestinationOrder);
+				workerHandleNewDestinationOrder(transmitChannelTCP, message, elevatorNewDestinationOrder);
 			
 			case message := <- workerDestinationOrderTakenBySomeoneRecipient.ReceiveChannel:
 
@@ -231,7 +231,7 @@ func Run() {
 
 			case floor := <- eventElevatorOrdersExecutedOnFloor:
 
-				workerHandleElevatorOrdersExecutedOnFloor(floor, transmitChannel);
+				workerHandleElevatorOrdersExecutedOnFloor(floor, transmitChannelTCP);
 
 			case message := <- workerOrdersExecutedOnFloorBySomeoneRecipient.ReceiveChannel:
 

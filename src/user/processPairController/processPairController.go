@@ -2,6 +2,7 @@ package processPairController;
 
 import(
 	"os"
+	"user/config"
 	"user/elevatorController"
 	"user/log"
 	"user/network"
@@ -11,31 +12,29 @@ import(
 
 //-----------------------------------------------//
 
-const(
-	ALIVE_MESSAGE_DEADLINE  		= 200
-	ALIVE_NOTIFICATION_DELAY  		= 15
-);
-
-//-----------------------------------------------//
-
 func backupProcess() {
+
+	log.Data("Backup process: starting...");
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
-	aliveRecipient := network.Recipient{ ID : "alive", ReceiveChannel : make(chan network.Message) };
-
-	timeoutTriggerTime 	:= time.Millisecond * ALIVE_MESSAGE_DEADLINE;
+	aliveRecipient := network.Recipient{ ID : "backupProcessAlive", ReceiveChannel : make(chan network.Message) };
+	dataRecipient  := network.Recipient{ ID : "backupProcessData", ReceiveChannel : make(chan network.Message) };
+ 
 	timeoutNotifier 	:= make(chan bool);
 
-	go network.UDPListenServerWithTimeout(network.LOCALHOST, addServerRecipientChannel, timeoutTriggerTime, timeoutNotifier);
+	go network.UDPListenServerWithTimeout(network.LOCALHOST, addServerRecipientChannel, config.BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE, timeoutNotifier);
 
 	addServerRecipientChannel <- aliveRecipient;
+	addServerRecipientChannel <- dataRecipient;
 
 	loop:
 	for {
 		select {
 			case message := <- aliveRecipient.ReceiveChannel:
-				log.Data("Alive", message);
+				log.Data("backupProcessAlive", message);
+			case message := <- dataRecipient.ReceiveChannel:
+				log.Data("dataRecipient", message);
 			case 			     <- timeoutNotifier:
 				log.Warning("Switching to master process");
 
@@ -47,24 +46,27 @@ func backupProcess() {
 
 //-----------------------------------------------//
 
-func masterProcessAliveNotification() {
+func masterProcessAliveNotification(transmitChannelUDP chan network.Message) {
 	
-	aliveTransmitChannel := make(chan network.Message);
-
-	go network.UDPTransmitServer(aliveTransmitChannel);
-
 	for {
-		time.Sleep(time.Millisecond * ALIVE_NOTIFICATION_DELAY);
-		aliveMessage, _ := JSON.Encode("Alive");
-		aliveTransmitChannel <- network.MakeTimeoutMessage("alive", aliveMessage, network.LOCALHOST);
+		time.Sleep(config.BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP);
+		aliveMessage, _ := JSON.Encode("backupProcessAlive");
+
+		transmitChannelUDP <- network.MakeTimeoutMessage("backupProcessAlive", aliveMessage, network.LOCALHOST);
 	}
 }
 
 func masterProcess() {
 
-	elevatorController.Initialize();
+	log.Data("Master process: starting...");
 
-	//go masterProcessAliveNotification();
+	transmitChannelUDP := make(chan network.Message);
+
+	go network.UDPTransmitServer(transmitChannelUDP);
+
+	go masterProcessAliveNotification(transmitChannelUDP);
+
+	elevatorController.Initialize();
 	go elevatorController.Run();
 }
 

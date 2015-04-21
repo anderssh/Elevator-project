@@ -15,7 +15,7 @@ var distributorIPAddr string = network.GetLocalIPAddr();
 
 //-----------------------------------------------//
 
-func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
+func workerHandleElevatorNewOrder(order Order, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
 	
 	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
 		
@@ -28,7 +28,7 @@ func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Mess
 			ordersUnconfirmed.Add(order, eventUnconfirmedOrderTimeout);
 			orderEncoded, _ := JSON.Encode(order);
 
-			transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
+			transmitChannelTCP <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
 		}
 	}
 
@@ -37,19 +37,19 @@ func workerHandleElevatorNewOrder(order Order, transmitChannel chan network.Mess
 
 //-----------------------------------------------//
 
-func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannel chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
+func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
 
 	log.Data("Worker: Did not receive confirmation on the order I sent up");
 
 	orderEncoded, _ := JSON.Encode(order);
 	ordersUnconfirmed.ResetTimer(order, eventUnconfirmedOrderTimeout);
 
-	transmitChannel <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
+	transmitChannelTCP <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
 }
 
 //-----------------------------------------------//
 
-func workerHandleNewDestinationOrder(transmitChannel chan network.Message, message network.Message, elevatorEventNewDestinationOrder chan Order) {
+func workerHandleNewDestinationOrder(transmitChannelTCP chan network.Message, message network.Message, elevatorEventNewDestinationOrder chan Order) {
 	
 	log.Data("Worker: Got new desitination order");
 
@@ -74,7 +74,7 @@ func workerHandleNewDestinationOrder(transmitChannel chan network.Message, messa
 
 	elevatorEventNewDestinationOrder <- order;
 
-	transmitChannel <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
+	transmitChannelTCP <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
 
 func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevatorDestinationOrderTakenBySomeone chan Order) {
@@ -105,7 +105,7 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevato
 
 //-----------------------------------------------//
 
-func workerHandleElevatorOrdersExecutedOnFloor(floor int, transmitChannel chan network.Message) {
+func workerHandleElevatorOrdersExecutedOnFloor(floor int, transmitChannelTCP chan network.Message) {
 
 	log.Data("Worker: Executed orders on floor", floor);
 
@@ -113,7 +113,7 @@ func workerHandleElevatorOrdersExecutedOnFloor(floor int, transmitChannel chan n
 
 	floorEncoded, _ := JSON.Encode(floor);
 
-	transmitChannel <- network.MakeMessage("distributorOrdersExecutedOnFloor", floorEncoded, distributorIPAddr);
+	transmitChannelTCP <- network.MakeMessage("distributorOrdersExecutedOnFloor", floorEncoded, distributorIPAddr);
 }
 
 func workerHandleOrdersExecutedOnFloorBySomeone(message network.Message, elevatorOrdersExecutedOnFloorBySomeone chan int) {
@@ -150,12 +150,12 @@ func workerHandleCostRequest(message network.Message, elevatorCostRequest chan O
 	elevatorCostRequest <- order;
 }
 
-func workerHandleElevatorCostResponse(cost int, transmitChannel chan network.Message) {
+func workerHandleElevatorCostResponse(cost int, transmitChannelTCP chan network.Message) {
 
 	log.Data("Worker: Cost from local is", cost);
 
 	costEncoded, _ := JSON.Encode(cost);
-	transmitChannel <- network.MakeMessage("distributorCostResponse", costEncoded, distributorIPAddr);
+	transmitChannelTCP <- network.MakeMessage("distributorCostResponse", costEncoded, distributorIPAddr);
 }
 
 //-----------------------------------------------//
