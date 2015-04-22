@@ -10,6 +10,8 @@ const(
 	PORT_SERVER_DEFAULT 								int 			= 	9125
 	PORT_SERVER_WITH_TIMEOUT							int 			= 	9126
 
+	TCP_READ_CONNECTION_DEADLINE 						time.Duration 	= 	time.Millisecond * 200
+
 	// Process pairs
 
 	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	false

@@ -8,6 +8,7 @@ import(
 	"user/log"
 	"user/encoder/JSON"
 	"strings"
+	"time"
 );
 
 //-----------------------------------------------//
@@ -35,8 +36,13 @@ func deleteConnectionWithIPAddr(iPAddrToDelete string) {
 func tcpListenOnConnection(listenConnection *net.TCPConn, remoteAddr *net.TCPAddr, remoteIPAddr string, messageChannel chan<- Message, eventDisconnect chan string) {
 
 	messageBuffer := make([]byte, 4096);
-
+	log.Warning("Start", remoteAddr, remoteIPAddr)
 	for {
+
+		if remoteIPAddr != localIPAddr && remoteIPAddr != LOCALHOST {  									// For timeout checking
+			listenConnection.SetReadDeadline(time.Now().Add(config.TCP_READ_CONNECTION_DEADLINE));
+		}
+		
 		messageLength, err := listenConnection.Read(messageBuffer);
 	
 		if err != nil || messageLength < 0 {
@@ -168,7 +174,7 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 
 					encodedMessage, _ 	:= JSON.Encode(message);
 					n, err 			  	:= sendConnection.Write(encodedMessage);
-					
+
 					tcpConnectionsMutex.Unlock();
 
 					if err != nil || n < 0 {

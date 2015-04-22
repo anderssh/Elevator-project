@@ -338,12 +338,14 @@ func distributorHandleMergeRequest(message network.Message, transmitChannelTCP c
 	switch currentState {
 		case STATE_IDLE:
 
-			log.Data("Distributor: Going into inactive some else is my distributor now.");
+			log.Data("Distributor: Going into inactive some else is my distributor now.", message.SenderIPAddr);
 
 			mergeData := MergeData{ WorkerIPAddrs : workerIPAddrs, Orders : ordersGlobal.GetAll() };
 			mergeDataEncoded, _ := JSON.Encode(mergeData);
 
 			transmitChannelTCP <- network.MakeMessage("distributorMergeData", mergeDataEncoded, message.SenderIPAddr);
+
+			distributorIPAddr = message.SenderIPAddr;
 
 			currentState = STATE_INACTIVE;
 	}
@@ -403,8 +405,6 @@ func distributorHandleElevatorNotFunctional(message network.Message, eventRedist
 func distributorHandleConnectionCheck(transmitChannelTCP chan network.Message) { 				// Force disconnect event if someone has disconnected
 
 	switch currentState {
-
-		case STATE_STARTUP:
 
 		case STATE_INACTIVE:
 

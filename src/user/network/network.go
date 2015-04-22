@@ -11,15 +11,15 @@ import(
 
 const (
 	BROADCAST_ADDR 	string = "255.255.255.255"
-	LOCALHOST 		string = "localhost"
+	LOCALHOST 		string = "127.0.0.1"
 );
 
 //-----------------------------------------------//
 
-var iPAddr 	string;
+var localIPAddr 	string;
 
 func GetLocalIPAddr() string {
-	return iPAddr;
+	return localIPAddr;
 }
 
 //-----------------------------------------------//
@@ -32,7 +32,7 @@ func Initialize(){
 	discoverConnAddr := discoverConn.LocalAddr();
 	localAddr, _ := net.ResolveUDPAddr("udp", discoverConnAddr.String());
 	
-	iPAddr = localAddr.IP.String();
+	localIPAddr = localAddr.IP.String();
 	
 	discoverConn.Close();
 
@@ -66,7 +66,7 @@ func MakeMessage(recipientID string, data []byte, destinationIPAddr string) Mess
 					DestinationIPAddr : destinationIPAddr, 
 					DestinationPort : config.PORT_SERVER_DEFAULT,
 					
-					SenderIPAddr : iPAddr,
+					SenderIPAddr : localIPAddr,
 					SenderPort : config.PORT_SERVER_DEFAULT,
 	 				
 	 				Data : data }
@@ -79,7 +79,7 @@ func MakeTimeoutServerMessage(recipientID string, data []byte, destinationIPAddr
 					DestinationIPAddr : destinationIPAddr, 
 					DestinationPort : config.PORT_SERVER_WITH_TIMEOUT,
 					
-					SenderIPAddr : iPAddr,
+					SenderIPAddr : localIPAddr,
 					SenderPort : config.PORT_SERVER_WITH_TIMEOUT,
 	 				
 	 				Data : data }
