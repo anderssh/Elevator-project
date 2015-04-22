@@ -509,10 +509,21 @@ func Run(transmitChannelUDP 					chan network.Message,
 		 workerNotFunctional 					chan bool) {
 
 	//-----------------------------------------------//
+	// Catch Ctrl+C
 
 	eventProgramTermination := make(chan os.Signal, 1);
 
 	signal.Notify(eventProgramTermination, os.Interrupt);
+
+	go func(){
+
+		for signal := range eventProgramTermination {
+
+			log.Error("Program terminated.", signal);
+			elevatorObject.Stop();
+			os.Exit(1);
+		}
+	}();
 
 	//-----------------------------------------------//
 
@@ -554,8 +565,6 @@ func Run(transmitChannelUDP 					chan network.Message,
 	//-----------------------------------------------//
 
 	elevatorObject.DriveInDirection(DIRECTION_DOWN);
-
-	//-----------------------------------------------//
 
 	for {
 		select {
@@ -637,13 +646,6 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 				workerNotFunctional <- true;
 
-			//-----------------------------------------------//
-
-			case signal := <- eventProgramTermination:
-
-				log.Error("Program terminated.", signal);
-				elevatorObject.Stop();
-				os.Exit(1);
 		}
 	}
 }
