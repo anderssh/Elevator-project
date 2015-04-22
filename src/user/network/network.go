@@ -31,6 +31,23 @@ func GetLocalIPAddr() string {
 var tcpConnections 			map[string]*net.TCPConn;
 var tcpConnectionsMutex 	*sync.Mutex;
 
+func deleteConnectionWithIPAddr(iPAddrToDelete string) {
+	
+	tcpConnectionsMutex.Lock();
+	
+	for remoteAddr, connection := range tcpConnections {
+
+		if strings.HasPrefix(remoteAddr, iPAddrToDelete + ":") {
+			connection.Close();
+			delete(tcpConnections, remoteAddr);
+		}
+	}
+	
+	tcpConnectionsMutex.Unlock();
+}
+
+//-----------------------------------------------//
+
 func Initialize(){
 
     discoverAddr, _ := net.ResolveUDPAddr("udp", BROADCAST_ADDR + ":50000");
@@ -45,21 +62,6 @@ func Initialize(){
 
 	tcpConnections 		= make(map[string]*net.TCPConn);
 	tcpConnectionsMutex = &sync.Mutex{};
-}
-
-func deleteConnectionWithIPAddr(iPAddrToDelete string) {
-	
-	tcpConnectionsMutex.Lock();
-	
-	for remoteAddr, connection := range tcpConnections {
-
-		if strings.HasPrefix(remoteAddr, iPAddrToDelete + ":") {
-			connection.Close();
-			delete(tcpConnections, remoteAddr);
-		}
-	}
-	
-	tcpConnectionsMutex.Unlock();
 }
 
 //-----------------------------------------------//
@@ -89,7 +91,7 @@ func MakeMessage(recipientID string, data []byte, destinationIPAddr string) Mess
 	 				Data : data }
 }
 
-func MakeTimeoutMessage(recipientID string, data []byte, destinationIPAddr string) Message {
+func MakeTimeoutServerMessage(recipientID string, data []byte, destinationIPAddr string) Message {
 	
 	return Message{	RecipientID : recipientID, 
 					

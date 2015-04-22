@@ -147,7 +147,7 @@ func masterProcessAliveNotification(transmitChannelUDP chan network.Message) {
 		time.Sleep(config.BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP);
 		aliveMessage, _ := JSON.Encode("backupProcessAlive");
 
-		transmitChannelUDP <- network.MakeTimeoutMessage("backupProcessAlive", aliveMessage, network.LOCALHOST);
+		transmitChannelUDP <- network.MakeTimeoutServerMessage("backupProcessAlive", aliveMessage, network.LOCALHOST);
 	}
 }
 

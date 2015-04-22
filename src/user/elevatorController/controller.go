@@ -15,7 +15,7 @@ import(
 func sendBackup(transmitChannelUDP chan network.Message) {
 
 	backupEncoded, _ := JSON.Encode(ordersGlobal.MakeBackup());
-	transmitChannelUDP <- network.MakeTimeoutMessage("backupProcessDataOrdersGlobal", backupEncoded, network.LOCALHOST);
+	transmitChannelUDP <- network.MakeTimeoutServerMessage("backupProcessDataOrdersGlobal", backupEncoded, network.LOCALHOST);
 }
 
 //-----------------------------------------------//

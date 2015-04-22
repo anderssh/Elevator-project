@@ -104,7 +104,7 @@ func Initialize() *ErrorElevator {
 	initializeSimpleButtons();
 
 	for floor := 0; floor < config.NUMBER_OF_FLOORS; floor++ {
-		TurnOffAllLightButtonsOnFloor(floor)
+		TurnOffAllLightButtonsOnFloor(floor);
 	}
 
 	return nil;
