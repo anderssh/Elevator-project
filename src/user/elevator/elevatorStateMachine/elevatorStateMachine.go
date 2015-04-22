@@ -3,9 +3,9 @@ package elevatorStateMachine
 import(
 	. "user/typeDefinitions"
 	"user/config"
-	"user/elevator"
+	"user/elevator/elevatorObject"
 	"user/log"
-	"user/ordersLocal"
+	"user/orders/ordersLocal"
 	"time"
 	"fmt"
 	"user/network"
@@ -30,7 +30,7 @@ var floorDestination 	int;
 
 //-----------------------------------------------//
 
-func sendBackup(transmitChannelUDP chan network.Message) {
+func sendBackupOrdersLocal(transmitChannelUDP chan network.Message) {
 
 	backupEncoded, _ := JSON.Encode(ordersLocal.MakeBackup());
 	transmitChannelUDP <- network.MakeTimeoutServerMessage("secondaryProcessDataOrders", backupEncoded, network.LOCALHOST);
@@ -68,7 +68,7 @@ func Display() {
 			fmt.Print(floor);
 			fmt.Print("|"); // Left wall
 
-			if elevator.GetLastReachedFloor() == floor {
+			if elevatorObject.GetLastReachedFloor() == floor {
 				fmt.Print("\x1b[33;1m");
 				fmt.Print("+++");
 				fmt.Print("\x1b[0m");
@@ -78,7 +78,7 @@ func Display() {
 
 			fmt.Print("|"); // Right wall
 
-			if currentState == STATE_DOOR_OPEN && elevator.GetLastReachedFloor() == floor {
+			if currentState == STATE_DOOR_OPEN && elevatorObject.GetLastReachedFloor() == floor {
 				fmt.Print("->");
 			} else {
 				fmt.Print("  ");
@@ -129,15 +129,15 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 	switch currentState {
 		case STATE_STARTUP:
 
-			elevator.SetLastReachedFloor(floorReached);
+			elevatorObject.SetLastReachedFloor(floorReached);
 
 			// Restore state from backup
 			for orderIndex := range backupDataOrders {
 
 				order := backupDataOrders[orderIndex];
 
-				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
-				elevator.TurnOnLightButtonFromOrder(order);
+				ordersLocal.Add(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
+				elevatorObject.TurnOnLightButtonFromOrder(order);
 			}
 
 			if ordersLocal.Exists() {
@@ -146,9 +146,9 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 				if floorDestination == floorReached {
 				
-					elevator.Stop();
+					elevatorObject.Stop();
 
-					elevator.TurnOnLightDoorOpen();
+					elevatorObject.TurnOnLightDoorOpen();
 					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true
 					});
@@ -157,10 +157,10 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 				} else {
 
-					if floorDestination > elevator.GetLastReachedFloor() {
-						elevator.DriveInDirection(DIRECTION_UP);
+					if floorDestination > elevatorObject.GetLastReachedFloor() {
+						elevatorObject.DriveInDirection(DIRECTION_UP);
 					} else {
-						elevator.DriveInDirection(DIRECTION_DOWN);
+						elevatorObject.DriveInDirection(DIRECTION_DOWN);
 					}
 
 					currentState = STATE_MOVING;
@@ -168,7 +168,7 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 			} else {
 
-				elevator.Stop();
+				elevatorObject.Stop();
 				currentState = STATE_IDLE;
 			}
 			// End restore from backup
@@ -177,7 +177,7 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 		case STATE_IDLE:
 
-			elevator.SetLastReachedFloor(floorReached);
+			elevatorObject.SetLastReachedFloor(floorReached);
 
 		case STATE_MOVING:
 			
@@ -187,9 +187,9 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 				if floorDestination == floorReached {
 				
-					elevator.Stop();
+					elevatorObject.Stop();
 
-					elevator.TurnOnLightDoorOpen();
+					elevatorObject.TurnOnLightDoorOpen();
 					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true
 					});
@@ -198,24 +198,24 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 				} else { // Update if other elevators has taken the orders
 
-					if floorDestination > elevator.GetLastReachedFloor() {
-						elevator.DriveInDirection(DIRECTION_UP);
+					if floorDestination > elevatorObject.GetLastReachedFloor() {
+						elevatorObject.DriveInDirection(DIRECTION_UP);
 					} else {
-						elevator.DriveInDirection(DIRECTION_DOWN);
+						elevatorObject.DriveInDirection(DIRECTION_DOWN);
 					}
 				}
 
 			} else {
 
-				elevator.Stop();
+				elevatorObject.Stop();
 				currentState = STATE_IDLE;
 			}
 
-			elevator.SetLastReachedFloor(floorReached);
+			elevatorObject.SetLastReachedFloor(floorReached);
 
 		case STATE_DOOR_OPEN:
 
-			elevator.SetLastReachedFloor(floorReached);
+			elevatorObject.SetLastReachedFloor(floorReached);
 	}
 }
 
@@ -238,21 +238,21 @@ func handleCloseDoor(eventCloseDoor chan bool, workerOrdersExecutedOnFloor chan 
 
 		case STATE_DOOR_OPEN:
 
-			ordersLocal.RemoveOnFloor(elevator.GetLastReachedFloor());
-			workerOrdersExecutedOnFloor <- elevator.GetLastReachedFloor();
+			ordersLocal.RemoveOnFloor(elevatorObject.GetLastReachedFloor());
+			workerOrdersExecutedOnFloor <- elevatorObject.GetLastReachedFloor();
 			
-			elevator.TurnOffLightDoorOpen();
-			elevator.TurnOffAllLightButtonsOnFloor(elevator.GetLastReachedFloor());
+			elevatorObject.TurnOffLightDoorOpen();
+			elevatorObject.TurnOffAllLightButtonsOnFloor(elevatorObject.GetLastReachedFloor());
 
 			if ordersLocal.Exists() {
 
 				floorDestination = ordersLocal.GetDestination();
 			
-				if floorDestination == elevator.GetLastReachedFloor() {
+				if floorDestination == elevatorObject.GetLastReachedFloor() {
 					
 					log.Warning("Orders still on floor when door closed.");
 					
-					elevator.TurnOnLightDoorOpen();
+					elevatorObject.TurnOnLightDoorOpen();
 					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true
 					});
@@ -261,10 +261,10 @@ func handleCloseDoor(eventCloseDoor chan bool, workerOrdersExecutedOnFloor chan 
 
 				} else {
 
-					if floorDestination > elevator.GetLastReachedFloor() {
-						elevator.DriveInDirection(DIRECTION_UP);
+					if floorDestination > elevatorObject.GetLastReachedFloor() {
+						elevatorObject.DriveInDirection(DIRECTION_UP);
 					} else {
-						elevator.DriveInDirection(DIRECTION_DOWN);
+						elevatorObject.DriveInDirection(DIRECTION_DOWN);
 					}
 
 					currentState = STATE_MOVING;
@@ -311,31 +311,31 @@ func handleNewDestinationOrder(order Order, eventCloseDoor chan bool) {
 
 			if !ordersLocal.AlreadyStored(order) {
 
-				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
-				elevator.TurnOnLightButtonFromOrder(order);
+				ordersLocal.Add(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
+				elevatorObject.TurnOnLightButtonFromOrder(order);
 			}
 
 			if ordersLocal.Exists() {
 
 				floorDestination = ordersLocal.GetDestination();
 				
-				if (floorDestination == elevator.GetLastReachedFloor()) {
+				if (floorDestination == elevatorObject.GetLastReachedFloor()) {
 					
-					elevator.TurnOnLightDoorOpen();
+					elevatorObject.TurnOnLightDoorOpen();
 					time.AfterFunc(config.ELEVATOR_DOOR_OPEN_DURATION, func() { // Close the door
 						eventCloseDoor <- true;
 					});
 
 					currentState = STATE_DOOR_OPEN;
 
-				} else if floorDestination < elevator.GetLastReachedFloor() {
+				} else if floorDestination < elevatorObject.GetLastReachedFloor() {
 					
-					elevator.DriveInDirection(DIRECTION_DOWN);
+					elevatorObject.DriveInDirection(DIRECTION_DOWN);
 					currentState = STATE_MOVING;
 
 				} else {
 
-					elevator.DriveInDirection(DIRECTION_UP);
+					elevatorObject.DriveInDirection(DIRECTION_UP);
 					currentState = STATE_MOVING;
 				}
 			}
@@ -344,8 +344,8 @@ func handleNewDestinationOrder(order Order, eventCloseDoor chan bool) {
 
 			if !ordersLocal.AlreadyStored(order) {
 				
-				ordersLocal.Add(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
-				elevator.TurnOnLightButtonFromOrder(order);
+				ordersLocal.Add(order, elevatorObject.GetLastReachedFloor(), true, elevatorObject.GetDirection());
+				elevatorObject.TurnOnLightButtonFromOrder(order);
 
 				floorDestination = ordersLocal.GetDestination();
 			}
@@ -354,8 +354,8 @@ func handleNewDestinationOrder(order Order, eventCloseDoor chan bool) {
 
 			if !ordersLocal.AlreadyStored(order) {
 				
-				ordersLocal.Add(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
-				elevator.TurnOnLightButtonFromOrder(order);
+				ordersLocal.Add(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
+				elevatorObject.TurnOnLightButtonFromOrder(order);
 
 				floorDestination = ordersLocal.GetDestination();
 			}
@@ -373,15 +373,15 @@ func handleDestinationOrderTakenBySomeone(order Order) {
 
 		case STATE_IDLE:
 
-			elevator.TurnOnLightButtonFromOrder(order);
+			elevatorObject.TurnOnLightButtonFromOrder(order);
 
 		case STATE_MOVING:
 
-			elevator.TurnOnLightButtonFromOrder(order);
+			elevatorObject.TurnOnLightButtonFromOrder(order);
 
 		case STATE_DOOR_OPEN:
 
-			elevator.TurnOnLightButtonFromOrder(order);
+			elevatorObject.TurnOnLightButtonFromOrder(order);
 	}
 }
 
@@ -397,17 +397,17 @@ func handleOrdersExectuedOnFloorBySomeone(floor int) {
 		case STATE_IDLE:
 
 			ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
-			elevator.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
+			elevatorObject.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
 
 		case STATE_MOVING:
 
 			ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
-			elevator.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
+			elevatorObject.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
 
 		case STATE_DOOR_OPEN:
 
 			ordersLocal.RemoveCallUpAndCallDownOnFloor(floor);
-			elevator.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
+			elevatorObject.TurnOffCallUpAndCallDownLightButtonsOnFloor(floor);
 	}
 }
 
@@ -422,15 +422,15 @@ func handleCostRequest(order Order, workerCostResponse chan int) {
 
 		case STATE_IDLE:
 
-			workerCostResponse <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+			workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
 
 		case STATE_MOVING:
 
-			workerCostResponse <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), true, elevator.GetDirection());
+			workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), true, elevatorObject.GetDirection());
 
 		case STATE_DOOR_OPEN:
 
-			workerCostResponse <- ordersLocal.GetCostOf(order, elevator.GetLastReachedFloor(), false, elevator.GetDirection());
+			workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
 	}
 }
 
@@ -476,15 +476,7 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 	//-----------------------------------------------//
 
-	sendBackup(transmitChannelUDP);
-
-	//-----------------------------------------------//
-
-	err := elevator.Initialize();
-
-	if err != nil {
-		log.Error(err);
-	}
+	elevatorObject.Initialize();
 
 	currentState 	 = STATE_STARTUP;
 	floorDestination = -1;
@@ -495,12 +487,12 @@ func Run(transmitChannelUDP 					chan network.Message,
 	eventObstruction 		:= make(chan bool);
 	eventButtonFloorPressed := make(chan ButtonFloor);
 
-	go elevator.RegisterEvents(	eventReachedNewFloor,
+	go elevatorObject.RegisterEvents(	eventReachedNewFloor,
 								eventStop,
 								eventObstruction,
 								eventButtonFloorPressed);
 
-	elevator.DriveInDirection(DIRECTION_DOWN);
+	elevatorObject.DriveInDirection(DIRECTION_DOWN);
 
 	//-----------------------------------------------//
 
@@ -517,13 +509,13 @@ func Run(transmitChannelUDP 					chan network.Message,
 			case floorReached := <- eventReachedNewFloor:
 
 				handleReachedNewFloor(floorReached, workerExitsStartup, eventCloseDoor, backupDataOrders);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersLocal(transmitChannelUDP);
 				Display();
 
 			case <- eventCloseDoor:
 
 				handleCloseDoor(eventCloseDoor, workerOrdersExecutedOnFloor);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersLocal(transmitChannelUDP);
 				Display();
 
 			case button := <- eventButtonFloorPressed:
@@ -534,7 +526,7 @@ func Run(transmitChannelUDP 					chan network.Message,
 			case order := <- eventNewDestinationOrder:
 
 				handleNewDestinationOrder(order, eventCloseDoor);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersLocal(transmitChannelUDP);
 				Display();
 
 			case order := <- eventDestinationOrderTakenBySomeone:
@@ -545,13 +537,13 @@ func Run(transmitChannelUDP 					chan network.Message,
 			case floor := <- eventOrdersExecutedOnFloorBySomeone:
 
 				handleOrdersExectuedOnFloorBySomeone(floor);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersLocal(transmitChannelUDP);
 				Display();
 
 			case <- eventRemoveCallUpAndCallDownOrders:
 
 				handleRemoveCallUpAndCallDownOrders();
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersLocal(transmitChannelUDP);
 
 			case order := <- eventCostRequest:
 

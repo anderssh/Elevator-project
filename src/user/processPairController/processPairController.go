@@ -4,7 +4,7 @@ import(
 	"os/exec"
 	. "user/typeDefinitions"
 	"user/config"
-	"user/elevatorController"
+	"user/elevator/elevatorController"
 	"user/log"
 	"user/network"
 	"time"

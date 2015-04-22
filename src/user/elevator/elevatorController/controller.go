@@ -2,17 +2,17 @@ package elevatorController;
 
 import(
 	. "user/typeDefinitions"
-	"user/elevatorStateMachine"
+	"user/elevator/elevatorStateMachine"
 	"user/network"
 	"time"
 	"user/config"
 	"user/encoder/JSON"
-	"user/ordersGlobal"
+	"user/orders/ordersGlobal"
 );
 
 //-----------------------------------------------//
 
-func sendBackup(transmitChannelUDP chan network.Message) {
+func sendBackupOrdersGlobal(transmitChannelUDP chan network.Message) {
 
 	backupEncoded, _ := JSON.Encode(ordersGlobal.MakeBackup());
 	transmitChannelUDP <- network.MakeTimeoutServerMessage("secondaryProcessDataOrdersGlobal", backupEncoded, network.LOCALHOST);
@@ -42,7 +42,7 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 	ordersGlobal.SetTo(backupDataOrdersGlobal.Orders);
 	ordersGlobal.ResetAllResponsibilities();
 
-	sendBackup(transmitChannelUDP);
+	sendBackupOrdersGlobal(transmitChannelUDP);
 
 	//-----------------------------------------------//
 	// Elevator state machine setup
@@ -155,7 +155,7 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 			case disconnectIPAddr := <- eventDisconnect:
 
 				distributorHandleConnectionDisconnect(disconnectIPAddr, transmitChannelTCP, eventRedistributeOrder);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 
 			//-----------------------------------------------//
 			// Distribute order
@@ -203,7 +203,7 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 			case message := <- distributorMergeDataRecipient.ReceiveChannel:
 
 				distributorHandleMergeData(message, transmitChannelTCP, eventRedistributeOrder);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 
 			//-----------------------------------------------//
 			//-----------------------------------------------//
@@ -233,31 +233,31 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrders OrdersBackup,
 			case message := <- workerNewDestinationOrderRecipient.ReceiveChannel:
 				
 				workerHandleNewDestinationOrder(transmitChannelTCP, message, elevatorNewDestinationOrder);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 			
 			case message := <- workerDestinationOrderTakenBySomeoneRecipient.ReceiveChannel:
 
 				workerHandleDestinationOrderTakenBySomeone(message, elevatorDestinationOrderTakenBySomeone);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 
 			//-----------------------------------------------//
 
 			case floor := <- eventElevatorOrdersExecutedOnFloor:
 
 				workerHandleElevatorOrdersExecutedOnFloor(floor, transmitChannelTCP);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 
 			case message := <- workerOrdersExecutedOnFloorBySomeoneRecipient.ReceiveChannel:
 
 				workerHandleOrdersExecutedOnFloorBySomeone(message, elevatorOrdersExecutedOnFloorBySomeone);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 
 			//-----------------------------------------------//
 
 			case message := <- workerChangeDistributorRecipient.ReceiveChannel:
 				
 				workerHandleDistributorChange(message, elevatorRemoveCallUpAndCallDownOrders);
-				sendBackup(transmitChannelUDP);
+				sendBackupOrdersGlobal(transmitChannelUDP);
 		}
 	}
 

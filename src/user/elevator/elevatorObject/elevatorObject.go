@@ -1,22 +1,13 @@
-package elevator
+package elevatorObject
 
 import (
+	"time"
+
+	. "user/typeDefinitions"
 	"user/config"
 	"user/io"
-	"time"
-	. "user/typeDefinitions"
 	"user/log"
 );
-
-//-----------------------------------------------//
-
-type ErrorElevator struct {
-    errorMessage string
-}
-
-func (err *ErrorElevator) Error() string {
-    return "Elevator error: " + err.errorMessage
-}
 
 //-----------------------------------------------//
 
@@ -89,14 +80,9 @@ func initializeSimpleButtons() {
 	buttonObstruction 	= ButtonSimple{ Type : BUTTON_OBSTRUCTION, 	IoRegisterPressed : io.OBSTRUCTION, PressedReadingPrevious : false, PressedReadingCurrent : false };
 }
 
-func Initialize() *ErrorElevator {
+func Initialize() {
 
-	err := io.Initialize();
-
-	if err != nil {
-		log.Error(err);
-		return &ErrorElevator{"Failed to initialize hardware."};
-	}
+	io.Initialize();
 
 	lastReachedFloor = -1;
 
@@ -106,8 +92,6 @@ func Initialize() *ErrorElevator {
 	for floor := 0; floor < config.NUMBER_OF_FLOORS; floor++ {
 		TurnOffAllLightButtonsOnFloor(floor);
 	}
-
-	return nil;
 }
 
 //-----------------------------------------------//
@@ -206,7 +190,7 @@ func GetLastReachedFloor() int {
 func registerEventReachedFloor(eventReachedNewFloor chan int) {
 
 	if io.IsBitSet(io.SENSOR_FLOOR0) {
-
+		
 		if lastReachedFloor != 0 {
 			eventReachedNewFloor  <- 0;
 		}

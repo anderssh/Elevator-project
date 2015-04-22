@@ -4,8 +4,10 @@ package io;
 #cgo LDFLAGS: -lcomedi -lm
 #include "io.h"
 */
+import "C";
+
 import(
-	"C"
+	"user/log"
 );
 
 //-----------------------------------------------//
@@ -64,25 +66,13 @@ const (
 
 //-----------------------------------------------//
 
-type ErrorIO struct {
-    errorMessage string
-}
-
-func (e *ErrorIO) Error() string {
-    return "IO error: " + e.errorMessage
-}
-
-//-----------------------------------------------//
-
-func Initialize() *ErrorIO {
+func Initialize() {
 	
 	err := C.io_init();
-
-	if err == 0 {
-		return &ErrorIO{"Failed to initialize hardware."};
-	}
 	
-	return nil
+	if err == 0 {
+		log.Error(err);
+	}
 }
 
 //-----------------------------------------------//

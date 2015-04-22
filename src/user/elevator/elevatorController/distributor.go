@@ -5,7 +5,7 @@ import(
 	"user/network"
 	"user/config"
 	"user/log"
-	"user/ordersGlobal"
+	"user/orders/ordersGlobal"
 	"user/encoder/JSON"
 	"strings"
 	"strconv"

@@ -5,8 +5,8 @@ import(
 	"user/network"
 	"user/encoder/JSON"
 	"user/log"
-	"user/ordersGlobal"
-	"user/ordersUnconfirmed"
+	"user/orders/ordersGlobal"
+	"user/orders/ordersUnconfirmed"
 );
 
 //-----------------------------------------------//
