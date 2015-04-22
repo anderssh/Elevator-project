@@ -14,7 +14,7 @@ const(
 
 	// Process pairs
 
-	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	false
+	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	true
 
 	BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE				time.Duration	=   time.Millisecond * 200
 	BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP  			time.Duration	=   time.Millisecond * 15
