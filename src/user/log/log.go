@@ -23,6 +23,8 @@ const (
 	COLOR_WHITE 	int 	= 		37
 );
 
+//-----------------------------------------------//
+
 var logLevel = LOG_ALL;
 
 func SetLogLevel(newLogLevel int) {

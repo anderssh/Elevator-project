@@ -31,8 +31,6 @@ func workerHandleElevatorNewOrder(order OrderLocal, transmitChannelTCP chan netw
 			transmitChannelTCP <- network.MakeMessage("distributorNewOrder", orderEncoded, distributorIPAddr);
 		}
 	}
-
-	ordersGlobal.Display();
 }
 
 //-----------------------------------------------//
@@ -75,6 +73,8 @@ func workerHandleNewDestinationOrder(transmitChannelTCP chan network.Message, me
 	elevatorEventNewDestinationOrder <- order;
 
 	transmitChannelTCP <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
+
+	ordersGlobal.Display();
 }
 
 func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevatorDestinationOrderTakenBySomeone chan OrderLocal) {
@@ -101,6 +101,8 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevato
 	}
 
 	elevatorDestinationOrderTakenBySomeone <- order;
+
+	ordersGlobal.Display();
 }
 
 //-----------------------------------------------//
@@ -114,6 +116,8 @@ func workerHandleElevatorOrdersExecutedOnFloor(floor int, transmitChannelTCP cha
 	floorEncoded, _ := JSON.Encode(floor);
 
 	transmitChannelTCP <- network.MakeMessage("distributorOrdersExecutedOnFloor", floorEncoded, distributorIPAddr);
+
+	ordersGlobal.Display();
 }
 
 func workerHandleOrdersExecutedOnFloorBySomeone(message network.Message, elevatorOrdersExecutedOnFloorBySomeone chan int) {
@@ -178,4 +182,6 @@ func workerHandleDistributorChange(message network.Message, elevatorRemoveCallUp
 	ordersGlobal.SetTo(newOrdersGlobal);
 
 	elevatorRemoveCallUpAndCallDownOrders <- true;
+
+	ordersGlobal.Display();
 }

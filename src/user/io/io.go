@@ -72,6 +72,7 @@ func Initialize() {
 	
 	if err == 0 {
 		log.Error(err);
+		panic(err);
 	}
 }
 

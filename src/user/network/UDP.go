@@ -17,7 +17,7 @@ func udpListen(IPAddr string, messageChannel chan<- Message) {
 	listenConnection, err := net.ListenUDP("udp", listenAddress);
 
 	if err != nil{
-		log.Error(err)
+		log.Error(err);
 	}
 	
 	defer func() {
