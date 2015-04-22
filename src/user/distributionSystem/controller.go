@@ -15,17 +15,17 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 	//-----------------------------------------------//
 	// Network setup
 
-	addServerRecipientChannel 		:= make(chan network.Recipient);
-	addBroadcastRecipientChannel 	:= make(chan network.Recipient);
+	addTCPServerRecipientChannel 	:= make(chan network.Recipient);
+	addUDPServerRecipientChannel 	:= make(chan network.Recipient);
 	
 	transmitChannelTCP 				:= make(chan network.Message);
 
 	eventDisconnect 				:= make(chan string);
 
-	go network.TCPListenServer("", addServerRecipientChannel, eventDisconnect);
+	go network.TCPListenServer("", addTCPServerRecipientChannel, eventDisconnect);
 	go network.TCPTransmitServer(transmitChannelTCP, eventDisconnect);
 
-	go network.UDPListenServer("", addBroadcastRecipientChannel);
+	go network.UDPListenServer("", addUDPServerRecipientChannel);
 
 	//-----------------------------------------------//
 	// Elevator state machine setup
@@ -75,20 +75,20 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 	distributorOrderTakenConfirmationRecipient  := network.Recipient{ ID : "distributorOrderTakenConfirmation", ReceiveChannel : make(chan network.Message) };
 	distributorOrdersExecutedOnFloorRecipient  	:= network.Recipient{ ID : "distributorOrdersExecutedOnFloor", 	ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- distributorNewOrderRecipient;
-	addServerRecipientChannel <- distributorCostResponseRecipient;
-	addServerRecipientChannel <- distributorOrderTakenConfirmationRecipient;
-	addServerRecipientChannel <- distributorOrdersExecutedOnFloorRecipient;
+	addTCPServerRecipientChannel <- distributorNewOrderRecipient;
+	addTCPServerRecipientChannel <- distributorCostResponseRecipient;
+	addTCPServerRecipientChannel <- distributorOrderTakenConfirmationRecipient;
+	addTCPServerRecipientChannel <- distributorOrdersExecutedOnFloorRecipient;
 
 	distributorMergeRequestRecipient 	:= network.Recipient{ ID : "distributorMergeRequest", 	ReceiveChannel : make(chan network.Message) };
 	distributorMergeDataRecipient 		:= network.Recipient{ ID : "distributorMergeData", 		ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- distributorMergeRequestRecipient;
-	addServerRecipientChannel <- distributorMergeDataRecipient;
+	addTCPServerRecipientChannel <- distributorMergeRequestRecipient;
+	addTCPServerRecipientChannel <- distributorMergeDataRecipient;
 
 	distributorElevatorNotFunctionalRecipient := network.Recipient{ ID : "distributorElevatorNotFunctional", 	ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- distributorElevatorNotFunctionalRecipient;
+	addTCPServerRecipientChannel <- distributorElevatorNotFunctionalRecipient;
 
 	eventRedistributeOrder := make(chan bool);
 
@@ -96,7 +96,7 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 
 	distributorActiveNotificationRecipient := network.Recipient{ ID : "distributorActiveNotification", 		ReceiveChannel : make(chan network.Message) };
 
-	addBroadcastRecipientChannel <- distributorActiveNotificationRecipient;
+	addUDPServerRecipientChannel <- distributorActiveNotificationRecipient;
 
 	eventDistributorAliveNotificationTicker := time.NewTicker(config.DISTRIBUTOR_ALIVE_NOTIFICATION_DELAY);
 	eventDistributorConnectionCheckTicker 	:= time.NewTicker(config.DISTRIBUTOR_CONNECTION_CHECK_DELAY);
@@ -109,14 +109,14 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 	workerDestinationOrderTakenBySomeoneRecipient 	:= network.Recipient{ ID : "workerDestinationOrderTakenBySomeone", 	ReceiveChannel : make(chan network.Message) };
 	workerOrdersExecutedOnFloorBySomeoneRecipient 	:= network.Recipient{ ID : "workerOrdersExecutedOnFloorBySomeone", 	ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- workerNewDestinationOrderRecipient;
-	addServerRecipientChannel <- workerCostRequestRecipient;
-	addServerRecipientChannel <- workerDestinationOrderTakenBySomeoneRecipient;
-	addServerRecipientChannel <- workerOrdersExecutedOnFloorBySomeoneRecipient;
+	addTCPServerRecipientChannel <- workerNewDestinationOrderRecipient;
+	addTCPServerRecipientChannel <- workerCostRequestRecipient;
+	addTCPServerRecipientChannel <- workerDestinationOrderTakenBySomeoneRecipient;
+	addTCPServerRecipientChannel <- workerOrdersExecutedOnFloorBySomeoneRecipient;
 
 	workerChangeDistributorRecipient 	:= network.Recipient{ ID : "workerChangeDistributor", 		ReceiveChannel : make(chan network.Message) };
 
-	addServerRecipientChannel <- workerChangeDistributorRecipient;
+	addTCPServerRecipientChannel <- workerChangeDistributorRecipient;
 
 	eventUnconfirmedOrderTimeout 		:= make(chan OrderLocal);
 

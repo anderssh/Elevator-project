@@ -148,9 +148,12 @@ func distributorHandleRedistributionOfOrder(transmitChannelTCP chan network.Mess
 	switch currentState {
 		case STATE_IDLE:
 
+			log.Data("Distributor: Try to redistribute");
+			ordersGlobal.Display();
+
 			if ordersGlobal.HasOrderToRedistribute() {
 
-				log.Data("Distributor: Got new order to redistribute.")
+				log.Data("Distributor: Got new order to redistribute.");
 
 				orderToRedistribute := ordersGlobal.GetOrderToRedistribute();
 			
@@ -472,9 +475,9 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChan
 
 				log.Data("Distributor: disconnected in INACTIVE. I am now a distributor.");
 
-				distributorInitialize(transmitChannelTCP);
-
 				ordersGlobal.ResetAllResponsibilities();
+
+				distributorInitialize(transmitChannelTCP);
 
 				returnToStateIdle(eventRedistributeOrder);
 			}
