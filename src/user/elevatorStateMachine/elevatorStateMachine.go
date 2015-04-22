@@ -33,7 +33,7 @@ var floorDestination 	int;
 func sendBackup(transmitChannelUDP chan network.Message) {
 
 	backupEncoded, _ := JSON.Encode(ordersLocal.MakeBackup());
-	transmitChannelUDP <- network.MakeTimeoutServerMessage("backupProcessDataOrders", backupEncoded, network.LOCALHOST);
+	transmitChannelUDP <- network.MakeTimeoutServerMessage("secondaryProcessDataOrders", backupEncoded, network.LOCALHOST);
 }
 
 //-----------------------------------------------//

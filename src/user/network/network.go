@@ -104,6 +104,8 @@ func MakeTimeoutServerMessage(recipientID string, data []byte, destinationIPAddr
 	 				Data : data }
 }
 
+//-----------------------------------------------//
+
 type Recipient struct {
 	ID 				string;
 	ReceiveChannel 	chan Message;

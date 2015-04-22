@@ -43,6 +43,8 @@ func writeBackupDataOrdersToFile(writeBackupDataOrders chan []byte) {
 	}
 }
 
+//-----------------------------------------------//
+
 func initializeBackupDataOrdersGlobal() OrdersGlobalBackup {
 	return OrdersGlobalBackup{ Orders : make([]OrderGlobal, 0, 1) };
 }
@@ -60,7 +62,7 @@ func handleBackupDataOrders(message network.Message, backupDataOrders OrdersBack
 
 	if dataReceived.Timestamp >= backupDataOrders.Timestamp {
 		
-		log.Data("Backup process: new backup data destination orders received.");
+		log.Data("Secondary process: new backup data destination orders received.");
 		
 		writeBackupDataOrders <- message.Data;
 
@@ -80,7 +82,7 @@ func handleBackupDataOrdersGlobal(message network.Message, backupDataOrdersGloba
 	}
 
 	if dataReceived.Timestamp >= backupDataOrdersGlobal.Timestamp {
-		log.Data("Backup process: new backup data orders global received.");
+		log.Data("Secondary process: new backup data orders global received.");
 		return dataReceived;
 	} else {
 		return backupDataOrdersGlobal;
@@ -89,9 +91,9 @@ func handleBackupDataOrdersGlobal(message network.Message, backupDataOrdersGloba
 
 //-----------------------------------------------//
 
-func backupProcess() {
+func secondaryProcess() {
 
-	log.Data("Backup process: starting...");
+	log.Data("Secondary process: starting...");
 
 	writeBackupDataOrders := make(chan []byte, 1000);
 
@@ -102,13 +104,13 @@ func backupProcess() {
 
 	addServerRecipientChannel := make(chan network.Recipient);
 
-	timeoutNotifier 	:= make(chan bool);
+	timeoutNotifier := make(chan bool);
 
 	go network.UDPListenServerWithTimeout(network.LOCALHOST, addServerRecipientChannel, config.BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE, timeoutNotifier);
 
-	aliveRecipient 					 := network.Recipient{ ID : "backupProcessAlive", ReceiveChannel : make(chan network.Message) };
-	backupDataOrdersRecipient  		 := network.Recipient{ ID : "backupProcessDataOrders", ReceiveChannel : make(chan network.Message) };
-	backupDataOrdersGlobalRecipient  := network.Recipient{ ID : "backupProcessDataOrdersGlobal", ReceiveChannel : make(chan network.Message) };
+	aliveRecipient 					 := network.Recipient{ ID : "secondaryProcessAlive", 			ReceiveChannel : make(chan network.Message) };
+	backupDataOrdersRecipient  		 := network.Recipient{ ID : "secondaryProcessDataOrders", 		ReceiveChannel : make(chan network.Message) };
+	backupDataOrdersGlobalRecipient  := network.Recipient{ ID : "secondaryProcessDataOrdersGlobal", ReceiveChannel : make(chan network.Message) };
 
 	addServerRecipientChannel <- aliveRecipient;
 	addServerRecipientChannel <- backupDataOrdersRecipient;
@@ -133,7 +135,7 @@ func backupProcess() {
 
 				log.Warning("Backup process: switching to master process");
 
-				go masterProcess(backupDataOrders, backupDataOrdersGlobal);
+				go primaryProcess(backupDataOrders, backupDataOrdersGlobal);
 				break loop;
 		}
 	}
@@ -141,33 +143,32 @@ func backupProcess() {
 
 //-----------------------------------------------//
 
-func masterProcessAliveNotification(transmitChannelUDP chan network.Message) {
+func primaryProcessAliveNotification(transmitChannelUDP chan network.Message) {
 	
 	for {
 		time.Sleep(config.BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP);
-		aliveMessage, _ := JSON.Encode("backupProcessAlive");
+		aliveMessage, _ := JSON.Encode("Alive");
 
-		transmitChannelUDP <- network.MakeTimeoutServerMessage("backupProcessAlive", aliveMessage, network.LOCALHOST);
+		transmitChannelUDP <- network.MakeTimeoutServerMessage("secondaryProcessAlive", aliveMessage, network.LOCALHOST);
 	}
 }
 
-func masterProcess(backupDataOrders OrdersBackup, backupDataOrdersGlobal OrdersGlobalBackup) {
+func primaryProcess(backupDataOrders OrdersBackup, backupDataOrdersGlobal OrdersGlobalBackup) {
 
-	log.Data("Master process: starting...");
+	log.Data("Primary process: starting...");
 
 	if config.SHOULD_USE_PROCESS_PAIRS {
 
 		cmd := exec.Command("gnome-terminal", "-e", "./main");
 		cmd.Output();
 
-		log.Data("Master process: Spawned backup");
+		log.Data("Primary process: Spawned backup");
 	}
 
 	transmitChannelUDP := make(chan network.Message);
-
 	go network.UDPTransmitServer(transmitChannelUDP);
 
-	go masterProcessAliveNotification(transmitChannelUDP);
+	go primaryProcessAliveNotification(transmitChannelUDP);
 
 	go elevatorController.Run(transmitChannelUDP, backupDataOrders, backupDataOrdersGlobal);
 }
@@ -178,5 +179,5 @@ func Run() {
 
 	network.Initialize();
 
-	go backupProcess();
+	go secondaryProcess();
 }
