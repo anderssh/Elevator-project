@@ -98,10 +98,6 @@ func TCPListenServer(IPAddr string, addRecipientChannel chan Recipient, eventDis
 	for {
 		select {
 			case message := <- messageChannel:
-				
-				if message.RecipientID == "distributorMergeRequest" {
-					log.Warning("YEAH...")
-				}
 
 				for recipientIndex := range recipients {
 					if message.RecipientID == recipients[recipientIndex].ID {
@@ -172,7 +168,7 @@ func TCPTransmitServer(transmitChannel chan Message, eventDisconnect chan string
 
 					encodedMessage, _ 	:= JSON.Encode(message);
 					n, err 			  	:= sendConnection.Write(encodedMessage);
-
+					
 					tcpConnectionsMutex.Unlock();
 
 					if err != nil || n < 0 {
