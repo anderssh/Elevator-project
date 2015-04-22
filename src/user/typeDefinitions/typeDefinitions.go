@@ -24,14 +24,9 @@ const(
 	ORDER_INSIDE 	OrderType = iota
 );
 
-type Order struct {
+type OrderLocal struct {
 	Type 	OrderType
 	Floor	int
-}
-
-type OrdersBackup struct {
-	Orders 		[]Order
-	Timestamp 	int64
 }
 
 type OrderUnconfirmed struct {
@@ -44,11 +39,6 @@ type OrderGlobal struct {
 	ResponsibleWorkerIPAddr string
 	Type 					OrderType
 	Floor 					int
-}
-
-type OrdersGlobalBackup struct {
-	Orders 		[]OrderGlobal
-	Timestamp 	int64
 }
 
 //-----------------------------------------------//
@@ -96,14 +86,14 @@ func (button *ButtonFloor) TurnOnLight() {
 	io.SetBit(button.IoRegisterLight);
 }
 
-func (button *ButtonFloor) ConvertToOrder() Order {
+func (button *ButtonFloor) ConvertToOrderLocal() OrderLocal {
 	
 	if (button.Type == BUTTON_CALL_UP) {
-		return Order{ Type : ORDER_UP, Floor : button.Floor };
+		return OrderLocal{ Type : ORDER_UP, Floor : button.Floor };
 	} else if (button.Type == BUTTON_CALL_DOWN) {
-		return Order{ Type : ORDER_DOWN, Floor : button.Floor };
+		return OrderLocal{ Type : ORDER_DOWN, Floor : button.Floor };
 	} else {
-		return Order{ Type : ORDER_INSIDE, Floor : button.Floor };
+		return OrderLocal{ Type : ORDER_INSIDE, Floor : button.Floor };
 	}
 }
 

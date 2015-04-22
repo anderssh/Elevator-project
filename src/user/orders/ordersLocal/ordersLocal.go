@@ -4,7 +4,6 @@ import(
 	. "user/typeDefinitions"
 	"user/config"
 	"math"
-	"time"
 );
 
 //-----------------------------------------------//
@@ -15,13 +14,13 @@ const(
 
 //-----------------------------------------------//
 
-var orders []Order = make([]Order, 0, 1);
+var orders []OrderLocal = make([]OrderLocal, 0, 1);
 
 //-----------------------------------------------//
 
-func MakeBackup() OrdersBackup {
+func MakeBackup() []OrderLocal {
 
-	ordersToBackup := make([]Order, 0, 1); 				// Only backup inside order, other are distributed via ordersGlobal
+	ordersToBackup := make([]OrderLocal, 0, 1); 			// Only backup inside order, other are distributed via ordersGlobal
 
 	for orderIndex := range orders {
 		if orders[orderIndex].Type == ORDER_INSIDE {
@@ -29,7 +28,7 @@ func MakeBackup() OrdersBackup {
 		}
 	}
 
-	return OrdersBackup{ Orders : ordersToBackup, Timestamp : time.Now().UnixNano() };
+	return ordersToBackup;
 }
 
 //-----------------------------------------------//
@@ -43,7 +42,7 @@ func Exists() bool {
 	return false;
 }
 
-func AlreadyStored(order Order) bool {
+func AlreadyStored(order OrderLocal) bool {
 	
 	for orderIndex := range orders {
 		if orders[orderIndex].Type == order.Type  && orders[orderIndex].Floor == order.Floor {
@@ -127,7 +126,7 @@ func RemoveCallUpAndCallDownOnFloor(floor int) {
 
 //-----------------------------------------------//
 
-func shouldOrderBeBetween(order Order, floorStart int, floorEnd int) bool {
+func shouldOrderBeBetween(order OrderLocal, floorStart int, floorEnd int) bool {
 		
 	// In between if moving up
 	if order.Type == ORDER_UP {
@@ -175,7 +174,7 @@ func shouldOrderBeBetween(order Order, floorStart int, floorEnd int) bool {
 	return false;
 }
 
-func GetIndexInQueue(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) int {
+func GetIndexInQueue(order OrderLocal, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) int {
 
 	// Empty list
 	if len(orders) < 1 {
@@ -225,13 +224,13 @@ func GetIndexInQueue(order Order, elevatorLastFloorVisited int, isElevatorMoving
 
 //-----------------------------------------------//
 
-func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) {
+func Add(order OrderLocal, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) {
 
 	index := GetIndexInQueue(order, elevatorLastFloorVisited, isElevatorMoving, elevatorDirection);
 	
 	if index == 0 {
 
-		orders = append([]Order{ order }, orders ... );
+		orders = append([]OrderLocal{ order }, orders ... );
 		
 	} else if index >= len(orders) {
 		
@@ -254,7 +253,7 @@ func Add(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, eleva
 
 //-----------------------------------------------//
 
-func GetCostOf(order Order, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) int {
+func GetCostOf(order OrderLocal, elevatorLastFloorVisited int, isElevatorMoving bool, elevatorDirection Direction) int {
 	
 	index := GetIndexInQueue(order, elevatorLastFloorVisited, isElevatorMoving, elevatorDirection);
 

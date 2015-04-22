@@ -3,7 +3,7 @@ export GOPATH=$(pwd)
 echo "Building executable"
 go build main.go
 echo "Start copying"
-scp  -r ~/Desktop/Elevator-project/main patrickf@129.241.187.146:~/Desktop
+scp  -r ~/Desktop/Elevator-project/main anderssh@129.241.187.150:~/Desktop
 echo "Finished copying"
-ssh patrickf@129.241.187.146
+ssh anderssh@129.241.187.150
 echo "Logged in"

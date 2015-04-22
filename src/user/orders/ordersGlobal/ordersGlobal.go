@@ -3,7 +3,6 @@ package ordersGlobal;
 import(
 	. "user/typeDefinitions"
 	"user/log"
-	"time"
 );
 
 //-----------------------------------------------//
@@ -22,17 +21,13 @@ func SetTo(newOrders []OrderGlobal) {
 
 //-----------------------------------------------//
 
-func MakeFromOrder(order Order, responsibleWorkerIPAddr string) OrderGlobal {
+func MakeFromOrderLocal(order OrderLocal, responsibleWorkerIPAddr string) OrderGlobal {
 	return OrderGlobal{ ResponsibleWorkerIPAddr : responsibleWorkerIPAddr, Type : order.Type, Floor : order.Floor };
-}
-
-func MakeBackup() OrdersGlobalBackup {
-	return OrdersGlobalBackup{ Orders : orders, Timestamp : time.Now().UnixNano() };
 }
 
 //-----------------------------------------------//
 
-func AlreadyStored(order Order) bool {
+func AlreadyStored(order OrderLocal) bool {
 	
 	for orderIndex := range orders {
 		if orders[orderIndex].Type == order.Type  && orders[orderIndex].Floor == order.Floor {

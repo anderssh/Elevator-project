@@ -1,4 +1,4 @@
-package elevatorController;
+package distributionSystem;
 
 import(
 	. "user/typeDefinitions"
@@ -30,7 +30,7 @@ const (
 
 var currentState State;
 
-var currentlyHandledOrder Order = Order{ -1, -1 };
+var currentlyHandledOrder OrderLocal = OrderLocal{ -1, -1 };
 
 //-----------------------------------------------//
 
@@ -113,7 +113,7 @@ func distributorInitialize(transmitChannelTCP chan network.Message) {
 
 	costBids = make([]CostBid, 0, 1);
 
-	currentlyHandledOrder = Order{ -1, -1 };
+	currentlyHandledOrder = OrderLocal{ -1, -1 };
 
 	ordersGlobalEncoded, _ := JSON.Encode(ordersGlobal.GetAll());
 
@@ -154,7 +154,7 @@ func distributorHandleRedistributionOfOrder(transmitChannelTCP chan network.Mess
 
 				orderToRedistribute := ordersGlobal.GetOrderToRedistribute();
 			
-				currentlyHandledOrder = Order{ Type : orderToRedistribute.Type, Floor : orderToRedistribute.Floor };
+				currentlyHandledOrder = OrderLocal{ Type : orderToRedistribute.Type, Floor : orderToRedistribute.Floor };
 				orderEncoded, _ := JSON.Encode(currentlyHandledOrder);
 
 				currentState = STATE_AWAITING_COST_RESPONSE;
@@ -249,7 +249,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 			log.Data("Distributor: Got order taken Confirmation");
 
-			var order Order;
+			var order OrderLocal;
 			err := JSON.Decode(message.Data, &order);
 
 			if err != nil {
@@ -257,7 +257,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 			}
 
 			// Distribute to others for global storage
-			orderGlobal := ordersGlobal.MakeFromOrder(order, message.SenderIPAddr);
+			orderGlobal := ordersGlobal.MakeFromOrderLocal(order, message.SenderIPAddr);
 			orderGlobalEncoded, _ := JSON.Encode(orderGlobal);
 
 			for costBidIndex := 1; costBidIndex < len(costBids); costBidIndex++ {
@@ -266,7 +266,7 @@ func distributorHandleOrderTakenConfirmation(message network.Message, transmitCh
 
 			// Clean up
 			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
+			currentlyHandledOrder = OrderLocal{ -1, -1 };
 
 			returnToStateIdle(eventRedistributeOrder);
 	}
@@ -422,7 +422,7 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChan
 			log.Data("Distributor: disconnected while waiting for cost response, aborting...");
 
 			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
+			currentlyHandledOrder = OrderLocal{ -1, -1 };
 
 			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
 
@@ -435,7 +435,7 @@ func distributorHandleConnectionDisconnect(disconnectIPAddr string, transmitChan
 			log.Data("Distributor: disconnected while waiting for order taken confirmation, aborting...");
 
 			costBids = make([]CostBid, 0, 1);
-			currentlyHandledOrder = Order{ -1, -1 };
+			currentlyHandledOrder = OrderLocal{ -1, -1 };
 
 			removeIpAddrFromWorkerIpAddrList(disconnectIPAddr);
 

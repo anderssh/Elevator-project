@@ -7,12 +7,12 @@ import(
 const(
 	// Network
 
-	PORT_SERVER_DEFAULT 								int 			= 	9125
+	PORT_SERVER_DEFAULT 								int 			= 	20398
 	PORT_SERVER_WITH_TIMEOUT							int 			= 	9126
 
 	// Process pairs
 
-	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	false
+	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	true
 
 	BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE				time.Duration	=   time.Millisecond * 200
 	BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP  			time.Duration	=   time.Millisecond * 15

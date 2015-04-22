@@ -13,7 +13,7 @@ var ordersUnconfirmed []OrderUnconfirmed = make([]OrderUnconfirmed, 0, 1);
 
 //-----------------------------------------------//
 
-func AlreadyStored(order Order) bool {
+func AlreadyStored(order OrderLocal) bool {
 	
 	for orderIndex := range ordersUnconfirmed {
 		if ordersUnconfirmed[orderIndex].Type == order.Type  && ordersUnconfirmed[orderIndex].Floor == order.Floor {
@@ -26,7 +26,7 @@ func AlreadyStored(order Order) bool {
 
 //-----------------------------------------------//
 
-func Add(order Order, eventUnconfirmedOrderTimeout chan Order) {
+func Add(order OrderLocal, eventUnconfirmedOrderTimeout chan OrderLocal) {
 
 	timer := time.AfterFunc(config.TIMEOUT_TIME_ORDER_TAKEN, func() {
 		eventUnconfirmedOrderTimeout <- order;
@@ -38,7 +38,7 @@ func Add(order Order, eventUnconfirmedOrderTimeout chan Order) {
 //-----------------------------------------------//
 
 
-func Remove(order Order) {
+func Remove(order OrderLocal) {
 
 	for orderIndex := range ordersUnconfirmed {
 		if ordersUnconfirmed[orderIndex].Type == order.Type && ordersUnconfirmed[orderIndex].Floor == order.Floor {
@@ -50,7 +50,7 @@ func Remove(order Order) {
 	}
 }
 
-func ResetTimer(order Order, eventUnconfirmedOrderTimeout chan Order) {
+func ResetTimer(order OrderLocal, eventUnconfirmedOrderTimeout chan OrderLocal) {
 
 	for orderIndex := range ordersUnconfirmed {
 		

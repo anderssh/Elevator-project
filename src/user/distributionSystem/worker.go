@@ -1,4 +1,4 @@
-package elevatorController;
+package distributionSystem;
 
 import(
 	. "user/typeDefinitions"
@@ -15,7 +15,7 @@ var distributorIPAddr string = network.GetLocalIPAddr();
 
 //-----------------------------------------------//
 
-func workerHandleElevatorNewOrder(order Order, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
+func workerHandleElevatorNewOrder(order OrderLocal, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan OrderLocal, eventUnconfirmedOrderTimeout chan OrderLocal) {
 	
 	if order.Type == ORDER_INSIDE { 							// Should only be dealt with locally
 		
@@ -37,7 +37,7 @@ func workerHandleElevatorNewOrder(order Order, transmitChannelTCP chan network.M
 
 //-----------------------------------------------//
 
-func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan Order, eventUnconfirmedOrderTimeout chan Order) {
+func workerHandleEventUnconfirmedOrderTimeout(order OrderLocal, transmitChannelTCP chan network.Message, elevatorEventNewDestinationOrder chan OrderLocal, eventUnconfirmedOrderTimeout chan OrderLocal) {
 
 	//log.Data("Worker: Did not receive confirmation on the order I sent up");
 
@@ -49,18 +49,18 @@ func workerHandleEventUnconfirmedOrderTimeout(order Order, transmitChannelTCP ch
 
 //-----------------------------------------------//
 
-func workerHandleNewDestinationOrder(transmitChannelTCP chan network.Message, message network.Message, elevatorEventNewDestinationOrder chan Order) {
+func workerHandleNewDestinationOrder(transmitChannelTCP chan network.Message, message network.Message, elevatorEventNewDestinationOrder chan OrderLocal) {
 	
 	log.Data("Worker: Got new desitination order");
 
-	var order Order;
+	var order OrderLocal;
 	err := JSON.Decode(message.Data, &order);
 
 	if err != nil {
 		log.Error(err);
 	}
 
-	orderGlobal := ordersGlobal.MakeFromOrder(order, network.GetLocalIPAddr());
+	orderGlobal := ordersGlobal.MakeFromOrderLocal(order, network.GetLocalIPAddr());
 
 	if ordersUnconfirmed.AlreadyStored(order) {
 		ordersUnconfirmed.Remove(order);
@@ -77,7 +77,7 @@ func workerHandleNewDestinationOrder(transmitChannelTCP chan network.Message, me
 	transmitChannelTCP <- network.MakeMessage("distributorOrderTakenConfirmation", message.Data, distributorIPAddr);
 }
 
-func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevatorDestinationOrderTakenBySomeone chan Order) {
+func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevatorDestinationOrderTakenBySomeone chan OrderLocal) {
 
 	log.Data("Worker: Some has taken a order");
 
@@ -88,7 +88,7 @@ func workerHandleDestinationOrderTakenBySomeone(message network.Message, elevato
 		log.Error(err);
 	}
 
-	order := Order{ Type : orderGlobal.Type, Floor : orderGlobal.Floor };
+	order := OrderLocal{ Type : orderGlobal.Type, Floor : orderGlobal.Floor };
 
 	if !ordersGlobal.AlreadyStored(order) {
 		ordersGlobal.Add(orderGlobal);
@@ -136,11 +136,11 @@ func workerHandleOrdersExecutedOnFloorBySomeone(message network.Message, elevato
 
 //-----------------------------------------------//
 
-func workerHandleCostRequest(message network.Message, elevatorCostRequest chan Order) {
+func workerHandleCostRequest(message network.Message, elevatorCostRequest chan OrderLocal) {
 	
 	log.Data("Worker: Got request for cost of order");
 
-	var order Order;
+	var order OrderLocal;
 	err := JSON.Decode(message.Data, &order);
 
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	. "user/typeDefinitions"
 	"user/config"
 	"user/io"
-	"user/log"
 );
 
 //-----------------------------------------------//
@@ -90,7 +89,7 @@ func Initialize() {
 	initializeSimpleButtons();
 
 	for floor := 0; floor < config.NUMBER_OF_FLOORS; floor++ {
-		TurnOffAllLightButtonsOnFloor(floor);
+		TurnOffAllLightsOnButtonsOnFloor(floor);
 	}
 }
 
@@ -106,7 +105,7 @@ func TurnOffLightDoorOpen() {
 
 //-----------------------------------------------//
 
-func TurnOnLightButtonFromOrder(order Order) {
+func TurnOnLightOnButtonFromOrderLocal(order OrderLocal) {
 
 	if order.Type == ORDER_UP{
 		containerButtonFloor[0][order.Floor].TurnOnLight();
@@ -117,7 +116,7 @@ func TurnOnLightButtonFromOrder(order Order) {
 	}
 }
 
-func TurnOffLightButtonFromOrder(order Order) {
+func TurnOffLightOnButtonFromOrderLocal(order OrderLocal) {
 
 	if order.Type == ORDER_UP{
 		containerButtonFloor[0][order.Floor].TurnOffLight();
@@ -128,7 +127,7 @@ func TurnOffLightButtonFromOrder(order Order) {
 	}
 }
 
-func TurnOffAllLightButtonsOnFloor(floor int) {
+func TurnOffAllLightsOnButtonsOnFloor(floor int) {
 
 	if floor < config.NUMBER_OF_FLOORS - 1 {
 		containerButtonFloor[0][floor].TurnOffLight(); 		// ORDER_UP
@@ -141,7 +140,7 @@ func TurnOffAllLightButtonsOnFloor(floor int) {
 	containerButtonFloor[2][floor].TurnOffLight();
 }
 
-func TurnOffCallUpAndCallDownLightButtonsOnFloor(floor int) {
+func TurnOffCallUpAndCallDownLightsOnButtonsOnFloor(floor int) {
 
 	if floor < config.NUMBER_OF_FLOORS - 1 {
 		containerButtonFloor[0][floor].TurnOffLight(); 		// ORDER_UP
