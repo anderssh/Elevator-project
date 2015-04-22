@@ -556,8 +556,8 @@ func Run(transmitChannelUDP 					chan network.Message,
 	isFunctional 		= true;
 	eventNotFunctional  := make(chan bool);
 	
-	eventStopCheckForFunctional  := make(chan bool, 1);
-	eventStartCheckForFunctional  := make(chan bool, 1);
+	eventStopCheckForFunctional  := make(chan bool, 100);
+	eventStartCheckForFunctional  := make(chan bool, 100);
 
 	timerReportNotFunctional  := time.AfterFunc(config.TIMEOUT_TIME_NOT_FUNCTIONAL, func() { eventNotFunctional <- true; });
 	timerReportNotFunctional.Stop();
