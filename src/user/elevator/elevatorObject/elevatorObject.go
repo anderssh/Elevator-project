@@ -88,6 +88,8 @@ func Initialize() {
 	initializeContainerButtonFloor();
 	initializeSimpleButtons();
 
+	TurnOffLightDoorOpen();
+
 	for floor := 0; floor < config.NUMBER_OF_FLOORS; floor++ {
 		TurnOffAllLightsOnButtonsOnFloor(floor);
 	}

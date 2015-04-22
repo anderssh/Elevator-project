@@ -7,12 +7,12 @@ import(
 const(
 	// Network
 
-	PORT_SERVER_DEFAULT 								int 			= 	20398
+	PORT_SERVER_DEFAULT 								int 			= 	9125
 	PORT_SERVER_WITH_TIMEOUT							int 			= 	9126
 
 	// Process pairs
 
-	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	true
+	SHOULD_USE_PROCESS_PAIRS 							bool 			= 	false
 
 	BACKUP_PROCESS_ALIVE_MESSAGE_DEADLINE				time.Duration	=   time.Millisecond * 200
 	BACKUP_PROCESS_ALIVE_NOTIFICATION_SLEEP  			time.Duration	=   time.Millisecond * 15
@@ -26,7 +26,9 @@ const(
 	DISTRIBUTOR_ALIVE_NOTIFICATION_DELAY 				time.Duration 	=	time.Millisecond * 40
 	DISTRIBUTOR_CONNECTION_CHECK_DELAY 					time.Duration 	=	time.Millisecond * 80
 				
-	TIMEOUT_TIME_ORDER_TAKEN							time.Duration	= 	time.Millisecond * 100	
+	TIMEOUT_TIME_ORDER_TAKEN							time.Duration	= 	time.Millisecond * 100
+
+	TIMEOUT_TIME_NOT_FUNCTIONAL							time.Duration	= 	time.Second * 5
 
 	// Elevator
 

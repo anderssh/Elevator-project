@@ -40,6 +40,7 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 	eventElevatorNewOrder 					:= make(chan OrderLocal);
 	eventElevatorCostResponse 				:= make(chan int, 10);
 	eventElevatorOrdersExecutedOnFloor 		:= make(chan int);
+	eventElevatorNotFunctional		 		:= make(chan bool);
 
 	go elevatorStateMachine.Run(transmitChannelUDP,
 
@@ -54,7 +55,8 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 						  	 	eventElevatorExitsStartup,
 						  	 	eventElevatorNewOrder,
 						  	 	eventElevatorCostResponse,
-						  	 	eventElevatorOrdersExecutedOnFloor);
+						  	 	eventElevatorOrdersExecutedOnFloor,
+						  	 	eventElevatorNotFunctional);
 
 	//-----------------------------------------------//
 	// Distributor setup
@@ -83,6 +85,10 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 
 	addServerRecipientChannel <- distributorMergeRequestRecipient;
 	addServerRecipientChannel <- distributorMergeDataRecipient;
+
+	distributorElevatorNotFunctionalRecipient := network.Recipient{ ID : "distributorElevatorNotFunctional", 	ReceiveChannel : make(chan network.Message) };
+
+	addServerRecipientChannel <- distributorElevatorNotFunctionalRecipient;
 
 	eventRedistributeOrder := make(chan bool);
 
@@ -187,6 +193,13 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 				distributorHandleMergeData(message, transmitChannelTCP, eventRedistributeOrder);
 
 			//-----------------------------------------------//
+			// Elevator not functional
+
+			case message := <- distributorElevatorNotFunctionalRecipient.ReceiveChannel:
+
+				distributorHandleElevatorNotFunctional(message, eventRedistributeOrder);
+
+			//-----------------------------------------------//
 			//-----------------------------------------------//
 			// Worker
 			//-----------------------------------------------//
@@ -228,6 +241,12 @@ func Run(transmitChannelUDP chan network.Message, backupDataOrdersLocal []OrderL
 			case message := <- workerOrdersExecutedOnFloorBySomeoneRecipient.ReceiveChannel:
 
 				workerHandleOrdersExecutedOnFloorBySomeone(message, elevatorOrdersExecutedOnFloorBySomeone);
+
+			//-----------------------------------------------//
+
+			case <- eventElevatorNotFunctional:
+
+				workerHandleElevatorNotFunctional(transmitChannelTCP);
 
 			//-----------------------------------------------//
 

@@ -31,6 +31,8 @@ const (
 var currentState 		State;
 var floorDestination 	int;
 
+var isFunctional 		bool;
+
 //-----------------------------------------------//
 
 func backupOrdersLocalToFile(backupOrdersLocal chan []OrderLocal) {
@@ -132,8 +134,8 @@ func Display() {
 
 //-----------------------------------------------//
 
-func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, eventCloseDoor chan bool, backupDataOrdersLocal []OrderLocal) {
-	
+func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, eventCloseDoor chan bool, backupDataOrdersLocal []OrderLocal, eventStopCheckForFunctional chan bool, eventStartCheckForFunctional chan bool) {
+
 	switch currentState {
 		case STATE_STARTUP:
 
@@ -162,6 +164,7 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 					});
 
 					currentState = STATE_DOOR_OPEN;
+					eventStopCheckForFunctional <- true;
 
 				} else {
 
@@ -172,12 +175,14 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 					}
 
 					currentState = STATE_MOVING;
+					eventStartCheckForFunctional <- true;
 				}
 
 			} else {
 
 				elevatorObject.Stop();
 				currentState = STATE_IDLE;
+				eventStopCheckForFunctional <- true;
 			}
 			// End restore from backup
 
@@ -203,6 +208,7 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 					});
 
 					currentState = STATE_DOOR_OPEN;
+					eventStopCheckForFunctional <- true;
 
 				} else { // Update if other elevators has taken the orders
 
@@ -217,6 +223,7 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 				elevatorObject.Stop();
 				currentState = STATE_IDLE;
+				eventStopCheckForFunctional <- true;
 			}
 
 			elevatorObject.SetLastReachedFloor(floorReached);
@@ -229,7 +236,7 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 
 //-----------------------------------------------//
 
-func handleCloseDoor(eventCloseDoor chan bool, workerOrdersExecutedOnFloor chan int) {
+func handleCloseDoor(eventCloseDoor chan bool, workerOrdersExecutedOnFloor chan int, eventStopCheckForFunctional chan bool, eventStartCheckForFunctional chan bool) {
 	
 	switch currentState {
 		case STATE_STARTUP:
@@ -266,6 +273,7 @@ func handleCloseDoor(eventCloseDoor chan bool, workerOrdersExecutedOnFloor chan 
 					});
 
 					currentState = STATE_DOOR_OPEN;
+					eventStopCheckForFunctional <- true;
 
 				} else {
 
@@ -276,9 +284,11 @@ func handleCloseDoor(eventCloseDoor chan bool, workerOrdersExecutedOnFloor chan 
 					}
 
 					currentState = STATE_MOVING;
+					eventStartCheckForFunctional <- true;
 				}
 			} else {
 				currentState = STATE_IDLE;
+				eventStopCheckForFunctional <- true;
 			}
 	}
 }
@@ -308,7 +318,7 @@ func handleButtonPressed(button ButtonFloor, workerNewOrder chan OrderLocal) {
 
 //-----------------------------------------------//
 
-func handleNewDestinationOrder(order OrderLocal, eventCloseDoor chan bool) {
+func handleNewDestinationOrder(order OrderLocal, eventCloseDoor chan bool, eventStopCheckForFunctional chan bool, eventStartCheckForFunctional chan bool) {
 
 	switch currentState {
 		case STATE_STARTUP:
@@ -335,16 +345,19 @@ func handleNewDestinationOrder(order OrderLocal, eventCloseDoor chan bool) {
 					});
 
 					currentState = STATE_DOOR_OPEN;
+					eventStopCheckForFunctional <- true;
 
 				} else if floorDestination < elevatorObject.GetLastReachedFloor() {
 					
 					elevatorObject.DriveInDirection(DIRECTION_DOWN);
 					currentState = STATE_MOVING;
+					eventStartCheckForFunctional <- true;
 
 				} else {
 
 					elevatorObject.DriveInDirection(DIRECTION_UP);
 					currentState = STATE_MOVING;
+					eventStartCheckForFunctional <- true;
 				}
 			}
 
@@ -430,15 +443,27 @@ func handleCostRequest(order OrderLocal, workerCostResponse chan int) {
 
 		case STATE_IDLE:
 
-			workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
+			if isFunctional {
+				workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
+			} else {
+				workerCostResponse <- 1000000;
+			}
 
 		case STATE_MOVING:
 
-			workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), true, elevatorObject.GetDirection());
+			if isFunctional {
+				workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), true, elevatorObject.GetDirection());
+			} else {
+				workerCostResponse <- 1000000;
+			}
 
 		case STATE_DOOR_OPEN:
 
-			workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), false, elevatorObject.GetDirection());
+			if isFunctional {
+				workerCostResponse <- ordersLocal.GetCostOf(order, elevatorObject.GetLastReachedFloor(), true, elevatorObject.GetDirection());
+			} else {
+				workerCostResponse <- 1000000;
+			}
 	}
 }
 
@@ -480,7 +505,8 @@ func Run(transmitChannelUDP 					chan network.Message,
 		 workerExitsStartup 					chan bool,
 		 workerNewOrder 						chan OrderLocal,
 		 workerCostResponse 					chan int,
-		 workerOrdersExecutedOnFloor 			chan int) {
+		 workerOrdersExecutedOnFloor 			chan int,
+		 workerNotFunctional 					chan bool) {
 
 	//-----------------------------------------------//
 
@@ -514,6 +540,19 @@ func Run(transmitChannelUDP 					chan network.Message,
 									 eventObstruction,
 									 eventButtonFloorPressed);
 
+	//-----------------------------------------------//
+
+	isFunctional 		= true;
+	eventNotFunctional  := make(chan bool);
+	
+	eventStopCheckForFunctional  := make(chan bool, 1);
+	eventStartCheckForFunctional  := make(chan bool, 1);
+
+	timerReportNotFunctional  := time.AfterFunc(config.TIMEOUT_TIME_NOT_FUNCTIONAL, func() { eventNotFunctional <- true; });
+	timerReportNotFunctional.Stop();
+
+	//-----------------------------------------------//
+
 	elevatorObject.DriveInDirection(DIRECTION_DOWN);
 
 	//-----------------------------------------------//
@@ -530,14 +569,14 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 			case floorReached := <- eventReachedNewFloor:
 
-				handleReachedNewFloor(floorReached, workerExitsStartup, eventCloseDoor, backupDataOrdersLocal);
+				handleReachedNewFloor(floorReached, workerExitsStartup, eventCloseDoor, backupDataOrdersLocal, eventStopCheckForFunctional, eventStartCheckForFunctional);
 				backupOrdersLocal <- ordersLocal.MakeBackup();
 				
 				Display();
 
 			case <- eventCloseDoor:
 
-				handleCloseDoor(eventCloseDoor, workerOrdersExecutedOnFloor);
+				handleCloseDoor(eventCloseDoor, workerOrdersExecutedOnFloor, eventStopCheckForFunctional, eventStartCheckForFunctional);
 				backupOrdersLocal <- ordersLocal.MakeBackup();
 				
 				Display();
@@ -550,7 +589,7 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 			case order := <- eventNewDestinationOrder:
 
-				handleNewDestinationOrder(order, eventCloseDoor);
+				handleNewDestinationOrder(order, eventCloseDoor, eventStopCheckForFunctional, eventStartCheckForFunctional);
 				backupOrdersLocal <- ordersLocal.MakeBackup();
 				
 				Display();
@@ -577,6 +616,28 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 				handleCostRequest(order, workerCostResponse);
 				Display();
+
+			//-----------------------------------------------//
+
+			case <- eventStartCheckForFunctional:
+
+				log.Warning("Elevator state machine: Checking for functional, risky terrain ahead.");
+				timerReportNotFunctional.Reset(config.TIMEOUT_TIME_NOT_FUNCTIONAL);
+
+			case <- eventStopCheckForFunctional:
+
+				log.Warning("Elevator stop: Does not check cool terrain now.");
+				isFunctional = true;
+				timerReportNotFunctional.Stop();
+
+			case <- eventNotFunctional:
+
+				log.Warning("Elevator state machine: Not functional");
+				isFunctional = false;
+
+				workerNotFunctional <- true;
+
+			//-----------------------------------------------//
 
 			case signal := <- eventProgramTermination:
 

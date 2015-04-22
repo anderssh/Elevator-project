@@ -328,7 +328,7 @@ func distributorHandleActiveNotification(message network.Message, transmitChanne
 				mergeIPAddr = message.SenderIPAddr;
 
 				log.Data("Distributor: Merge with", mergeIPAddr);
-				transmitChannelTCP <- network.MakeMessage("distributorMergeRequest", make([]byte, 5, 5), mergeIPAddr);
+				transmitChannelTCP <- network.MakeMessage("distributorMergeRequest", make([]byte, 0, 1), mergeIPAddr);
 			}
 	}
 }
@@ -379,6 +379,20 @@ func distributorHandleMergeData(message network.Message, transmitChannelTCP chan
 
 			mergeIPAddr = "";
 
+			returnToStateIdle(eventRedistributeOrder);
+	}
+}
+
+//-----------------------------------------------//
+
+func distributorHandleElevatorNotFunctional(message network.Message, eventRedistributeOrder chan bool) {
+
+	log.Data("Distirbutor: Elevator is not functioning properly, redistribute", message.SenderIPAddr);
+
+	ordersGlobal.ResetResponsibilityOnWorkerIPAddr(message.SenderIPAddr);
+
+	switch currentState {
+		case STATE_IDLE:
 			returnToStateIdle(eventRedistributeOrder);
 	}
 }

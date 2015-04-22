@@ -185,3 +185,14 @@ func workerHandleDistributorChange(message network.Message, elevatorRemoveCallUp
 
 	ordersGlobal.Display();
 }
+
+//-----------------------------------------------//
+
+func workerHandleElevatorNotFunctional(transmitChannelTCP chan network.Message) {
+
+	log.Data("Worker: my elevator is not functioning properly at the moment.");
+
+	ordersGlobal.ResetResponsibilityOnWorkerIPAddr(network.GetLocalIPAddr());
+
+	transmitChannelTCP <- network.MakeMessage("distributorElevatorNotFunctional", make([]byte, 0, 1), distributorIPAddr);
+}
