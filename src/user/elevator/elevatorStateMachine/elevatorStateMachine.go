@@ -217,6 +217,8 @@ func handleReachedNewFloor(floorReached int, workerExitsStartup chan bool, event
 					} else {
 						elevatorObject.DriveInDirection(DIRECTION_DOWN);
 					}
+
+					eventStopCheckForFunctional <- true;
 				}
 
 			} else {
@@ -643,6 +645,7 @@ func Run(transmitChannelUDP 					chan network.Message,
 
 				log.Warning("Elevator state machine: Not functional");
 				isFunctional = false;
+				timerReportNotFunctional.Stop();
 
 				workerNotFunctional <- true;
 

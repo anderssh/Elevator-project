@@ -30,7 +30,7 @@ const(
 				
 	TIMEOUT_TIME_ORDER_TAKEN							time.Duration	= 	time.Millisecond * 100
 
-	TIMEOUT_TIME_NOT_FUNCTIONAL							time.Duration	= 	time.Second * 5
+	TIMEOUT_TIME_NOT_FUNCTIONAL							time.Duration	= 	time.Second * 10
 
 	// Elevator
 
