@@ -77,7 +77,11 @@ func UDPListenServer(IPAddr string, addRecipientChannel chan Recipient) {
 func udpListenWithTimeout(IPAddr string, messageChannel chan<- Message, deadlineDuration time.Duration, timeoutNotifier chan<- bool) {
 
 	listenAddress, _ 	:= net.ResolveUDPAddr("udp", IPAddr + ":" + strconv.Itoa(config.PORT_SERVER_WITH_TIMEOUT));
-	listenConnection, _ := net.ListenUDP("udp", listenAddress);
+	listenConnection, err := net.ListenUDP("udp", listenAddress);
+
+	if err != nil {
+		log.Error(err);
+	}
 	
 	listenConnection.SetDeadline(time.Now().Add(deadlineDuration));
 
